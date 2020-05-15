@@ -1,0 +1,16 @@
+grapes /data/db_file/db.gfd 3
+/usr/bin/time output: 3340
+mtmdd /data/db_file/db.gfd 3
+/usr/bin/time output: 5608
+mtmdd_query /data/db_file/db.gfd 3
+/usr/bin/time output: 5244
+grapes_query /data/db_file/db.gfd 3
+/usr/bin/time output: 3408
+grapes_query /data/db_file/db.gfd 3
+/usr/bin/time output: 3416
+mtmdd_query /data/db_file/db.gfd 3
+/usr/bin/time output: 5244
+mtmdd_query /data/db_file/db.gfd 3
+/usr/bin/time output: 5224
+grapes_query /data/db_file/db.gfd 3
+/usr/bin/time output: 3336

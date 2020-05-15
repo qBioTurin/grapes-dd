@@ -1,0 +1,44 @@
+#G1
+6
+Arancio
+Blu
+Blu
+Verde
+Arancio
+Giallo
+9
+0 1
+0 3
+1 2
+1 5
+2 0
+3 4
+4 2
+4 5
+5 0
+#G2
+5
+Arancio
+Blu
+Arancio
+Giallo
+Blu
+7
+0 1
+0 4
+1 3
+2 1
+3 0
+3 2
+4 3
+#G3
+4
+Arancio
+Blu
+Giallo
+Verde
+4
+0 1
+0 3
+1 3
+3 2
