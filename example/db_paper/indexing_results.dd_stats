@@ -1,2 +1,0 @@
-db	depth	ngraphs	nlabels	direct	nnodes	pnodes	nedges	mem	peak_mem	nelems	build_t	save_t	total_t
-db.gfd	4	3	4	1	39	39	82	1888	1888	54	0.00132062	0.000258832	0.00157945

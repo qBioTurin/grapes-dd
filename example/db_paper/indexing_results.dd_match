@@ -1,4 +1,0 @@
-db	query	depth	ngraphs	nlabels	direct	nmatched_g	load_t	q_index_t	q_match_f	q_filter_t	total_t
-db.gfd	triangle_pattern.gff	4	3	4	1	2	0.000265037	0.000228786	6.0433e-05	2.2008e-05	0.000847524
-db.gfd	triangle_pattern.gff	4	3	4	1	2	0.000180866	0.000244818	6.8323e-05	2.8246e-05	0.000946247
-db.gfd	square_pattern.gff	4	3	4	1	1	0.000194386	0.000257033	6.7507e-05	2.7078e-05	0.00196718
