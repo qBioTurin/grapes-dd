@@ -44,8 +44,8 @@ Build the index of the given database of graphs.
 | Parameter | Description |
 |-----------------------|-------------|
 |**-i db_file**| textual graphs database file|
-|**-l lp**| specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
-|**-d bool**| flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
+|**-l lp**     | specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
+|**-d bool**   | flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
 
 The indexing phase  produces the *db_file.index.lp.mtdd* file in which the database index is stored.
 
@@ -56,11 +56,11 @@ The indexing phase  produces the *db_file.index.lp.mtdd* file in which the datab
 
 | Attribute | Description |
 |-----------------------|-------------|
-|**-i db_file** | textual graphs database file|
-|**-q query_file** | textual query graph file. It must contain just one graph |
-|**-l lp**| specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4. 
-|**-d bool**| flag indicating if the graphs are directed (true) or undirected (false). Default value is true. 
-|**-t nthreads**| number of threads to be used during matching phase 
+|**-i db_file**    | textual graphs database file
+|**-q query_file** | textual query graph file. It must contain just one graph 
+|**-l lp**         | specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4. 
+|**-d bool**       | flag indicating if the graphs are directed (true) or undirected (false). Default value is true. 
+|**-t nthreads**   | number of threads to be used during matching phase 
 
 <span style="color:red">ATTENTION:</span> before run a query, the database index must have been computed and the resultant file must be maintained in the same directory of the database textual file.
 
@@ -69,42 +69,43 @@ The indexing phase  produces the *db_file.index.lp.mtdd* file in which the datab
 
 ### Use containerized GRAPES-DD 
 
-We built a Docker image containing both GRAPES-DD and GRAPES.
+We built a Docker image containing both GRAPES-DD and GRAPES. 
+In the folder where the Dockerfile is, run the following command to build the image:
 
 ##### Build the docker image
 
-```docker build -t "docker_user/grapes_dd" .```
+```docker build -t "grapes_dd" .```
 
 ##### Database Index Construction 
 
 You have to mount the folder containing the graph database in ```/data/db_folder```.
 
-```docker run -v db_folder:/data/db_file docker_user/grapes_dd [mode] -i db_file -l lp -d bool```
+```docker run -v db_folder:/data/db_file grapes_dd [mode] -i db_file -l lp -d bool```
 
 
 | Parameter | Description |
 |-----------------------|-------------|
-|**mode**| specify the tool to be used (grapes or grapes_dd). 
+|**mode**      | specify the tool to be used (grapes or grapes_dd). 
 |**-i db_file**| textual graphs database file|
-|**-l lp**| specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
-|**-d bool**| flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
+|**-l lp**     | specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
+|**-d bool**   | flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
 
 
 ##### Querying
 
 You have to mount the folders containing the graph database and the query file in ```/data/db_file``` and ```/data/query_file```, respectively. 
 
-```docker run -v db_folder:/data/db_file -v query_folder:/data/query_file docker_user/grapes_dd [grapes|grapes_dd] -i db_file -l lp -d bool -t nthreads```
+```docker run -v db_folder:/data/db_file -v query_folder:/data/query_file grapes_dd [grapes|grapes_dd] -i db_file -l lp -d bool -t nthreads```
 
 
 | Parameter | Description |
 |-----------------------|-------------|
-|**mode**| specify the tool to be used (grapes or grapes_dd). 
-|**-i db_file**| textual graphs database file|
-|**-q query_file** | textual query graph file. It must contain just one graph |
-|**-l lp**| specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
-|**-d bool**| flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
-|**-t nthreads**| number of threads to be used during matching phase 
+|**mode**          | specify the tool to be used (grapes or grapes_dd). 
+|**-i db_file**    | textual graphs database file|
+|**-q query_file** | textual query graph file. It must contain just one graph 
+|**-l lp**         | specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
+|**-d bool**       | flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
+|**-t nthreads**   | number of threads to be used during matching phase 
 
 
 
