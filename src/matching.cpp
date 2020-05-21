@@ -252,7 +252,7 @@ void mtdds::graph_find(
 	MPRINT_OPT_NO 		= 0,
 	MPRINT_OPT_CONSOLE 	= 1,
 	MPRINT_OPT_FILE 	= 2	 */
-    MPRINT_OPTIONS mprint_opt = MPRINT_OPT_CONSOLE;
+    MPRINT_OPTIONS mprint_opt = MPRINT_OPT_NO;
 
     GRAPESLib::QueryGraph aqg(squery);   
 	GRAPESLib::MatchingManager mman(aqg, rgraphs, fgset, gncands, *(new GRAPESLib::DefaultAttrComparator()), nthreads);

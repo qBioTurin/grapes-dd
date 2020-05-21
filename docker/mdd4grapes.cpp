@@ -121,7 +121,7 @@ int main(int argc, char* argv[]) {
                 direct_flag,                //in (un)directed mode 
                 input_file,                 //this file is the index 
                 query_file,                 //and this is the query graph 
-                "-console",                 //show results on stdout 
+                "-no",                      //show no results
                 "-lp", std::to_string(depth)//this is the max path length 
             }; 
         }

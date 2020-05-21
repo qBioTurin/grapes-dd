@@ -102,6 +102,11 @@ int main(int argc, char** argv) {
         time_point start_saving, end_saving; 
         double time_build = 0, time_saving = 0; 
 
+        std::cout
+            << "\t\t============== BUILD ================\n\n"
+            << "MAX LP depth: " << max_depth << "\n"
+            << "Input database file: " << graph_file << "\n\n";
+
         start_build = std::chrono::_V2::steady_clock::now(); 
         mtdds::MultiterminalDecisionDiagram mtmdd_index(graph_file, max_depth, direct_graph, buffersize); 
         end_build = std::chrono::_V2::steady_clock::now(); 
@@ -113,9 +118,6 @@ int main(int argc, char** argv) {
         time_saving = get_time_interval(end_saving, start_saving); 
 
         std::cout
-            << "\t\t============== GRAPES-DD INDEXING BUILDING ================\n\n"
-            << "MAX LP depth: " << 4 << "\n"
-            << "Input database file: " << graph_file << "\n\n"
             << "Number of graphs inside the database: " << mtmdd_index.num_indexed_graphs() << "\n\n"
             << "Time for build database index: " << time_build << "\n"
             << "Time for save index on file: " << time_saving << "\n"
@@ -147,6 +149,12 @@ int main(int argc, char** argv) {
         std::vector<double> stages_times;  
         double total_time = 0; 
 
+        std::cout << "\t\t============== GRAPES-DD QUERY MATCHING ================\n\n"
+            << "Input database: " << graph_file << "\n"
+            << "Input query graph: " << query_file << "\n"
+            << "Number of threads: " << nthreads << "\n"
+            << "MAX LP depth: " << max_depth << "\n";
+
         start_loading = std::chrono::_V2::steady_clock::now(); 
         mtmdd_index.read(graph_file, max_depth); 
         end_loading = std::chrono::_V2::steady_clock::now(); 
@@ -171,10 +179,7 @@ int main(int argc, char** argv) {
         
         stages_times.push_back(total_time); 
 
-        std::cout << "\t\t============== GRAPES-DD QUERY MATCHING ================\n\n"
-            << "Input database: " << graph_file << "\n"
-            << "Input query graph: " << query_file << "\n"
-            << "Number of threads: " << nthreads << "\n"
+        std::cout 
             << "Number of graphs inside the database: " << mtmdd_index.num_graphs_in_db << "\n"
             << "Number of candidate graphs: " << matching_stats["n_cand_graphs"] << "\n"
             << "Number of connected components by filtering: "<< matching_stats["n_cocos"] << "\n"
