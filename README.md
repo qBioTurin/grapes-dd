@@ -23,13 +23,20 @@ It requires the MEDDLY Library 0.15.0 available at https://github.com/asminer/me
 
 The executable *grapes_dd* allows to both build the database index and to run a query. 
 
+You can try and compare GRAPES-DD and GRAPES performances by using the runTest.py python script. 
+Tests will be run through Docker if it is installed.
+
+We recommend you to run the software via Docker. See https://www.docker.com/
+
 ##### Build from source code 
 
 Executables are available only after building source code on your system.
 
 ```
+# Compile GRAPES 
 cd src/GRAPES && make -B 
 cd ..
+# Compile GRAPES-DD
 make clean
 make grapes_dd
 ```
