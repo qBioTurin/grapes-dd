@@ -1,6 +1,10 @@
 #!/usr/bin/env python3 
 
-
+# This script allows you to compare GRAPES and GRAPES-DD over the dataset provided in the ./example/ folder,
+# which contains both real and synthetic graphs, as well as the query graphs. 
+# We recommend you to install Docker before run this script, in order to run the tools in a container with all the 
+# software and libraries required. 
+# Otherwise, you have to install Meddly Library v0.15.0 from https://github.com/asminer/meddly/releases before run this script. 
 
 import argparse
 import os 
@@ -138,7 +142,7 @@ Otherwise, you have to install Meddly Library v0.15.0 from https://github.com/as
 
     input("\nPress ENTER to start...\n")
 
-    if check_command("dockaer"):
+    if check_command("docker"):
         build_docker()
 
         for tool in tools:

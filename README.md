@@ -16,6 +16,27 @@ The GRAPES-DD verification phase remains as in the original version of the softw
 
 <hr/>
 
+### Datasets
+
+We provide all the graphs used during testing.
+
+The directory ```example/graphs``` provides the collections of graphs. 
+The directory ```example/queries``` provides both the collections of graphs and the query graphs.
+Inside these directory there are two subdirectories: 
+* ```biochemical``` directory contains the biochemical graphs: PDBS, PCM and PPI, as well as the single PPI networks (C. elegans, D. melanogaster, H. sapiens, M. musculus and S. cerevisiae).  
+* ```synthetic``` directory contains the synthetic Barabasi and Forestfire graphs. 
+    * Barabasi folder structure is the following: ```Barabasi/directed/num_nodes/degree/target-powerP-ID_LabelRange.gfd``` where:
+        * num_nodes is the number of vertices of the graph
+        * degree is the average degree of a vertex 
+        * P is the exponent of the power-law 
+        * LabelRange is the percentage of distinct labels respect to the number of vertices. 
+    * ForestFire folder structure is the following: ```ForestFire/directed/num_nodes/p/targetID_LabelRange.gfd``` where:
+        * num_nodes is the number of vertices of the graph
+        * p is the probability of a link between two vertices
+        * LabelRange is the percentage of distinct labels respect to the numer of vertices. 
+
+Each target graph presents in the ```queries``` folder has a dedicated subfolder containing the query graphs extracted from it. Query folder names represent the number of vertices of the query graph. Query graph names are ```LabelRange_sub_ID.gfd```. 
+
 ### Usage
 
 GRAPES-DD is developed in C++ under GNU\Linux using POSIX Threads programming.
@@ -26,7 +47,25 @@ The executable *grapes_dd* allows to both build the database index and to run a 
 You can try and compare GRAPES-DD and GRAPES performances by using the runTest.py python script. 
 Tests will be run through Docker if it is installed.
 
+Index building phase: 
+
+```./runTest.py [-i folder_database/graph_database.gfd] -l lp -t num_threads```
+
+Index building + query matching phase:
+
+```./runTest.py [-i folder_database/graph_database.gfd -q folder_database/folder_query/query_graph.gff] -l lp -t nt```
+
+
+| Parameter | Description |
+|-----------------------|-------------|
+|**-i db_file**| path of the textual graphs database file|
+|**-q query_file**|path of the textual graph query file |
+|**-l lp**     | specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
+|**-t nt**   | number of threads to be used during matching phase. Default value is 1. 
+
 We recommend you to run the software via Docker. See https://www.docker.com/
+
+<span style="color:red">ATTENTION:</span> the query graph file must be located in a subdirectory of the graph database file. Query graphs are graph database specific. 
 
 ##### Build from source code 
 
@@ -113,6 +152,8 @@ You have to mount the folders containing the graph database and the query file i
 |**-l lp**         | specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
 |**-d bool**       | flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
 |**-t nthreads**   | number of threads to be used during matching phase 
+
+
 
 
 
