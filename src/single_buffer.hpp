@@ -139,10 +139,8 @@ inline SingleBuffer::buffer_slot_t SingleBuffer::get_slot() {
 }
 
 inline SingleBuffer::buffer_slot_t SingleBuffer::push_slot(int value) {
-    buffer_slot_t ret(allocate(), false); 
-    base::push_back(ret.first); 
-    ++num_current_elements; 
-    values.push_back(value); 
+    buffer_slot_t ret(this->push_slot()); 
+    values.push_back(value);
     return ret; 
 }
 

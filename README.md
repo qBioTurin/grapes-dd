@@ -1,6 +1,7 @@
 # GRAPES-DD
-> GRAPES-DD is a modified version of GRAPES (available at https://github.com/InfOmics/GRAPES ) in which the trie indexing structure has been replaced with a multi-terminal decision diagram (MTMDD). 
+> GRAPES-DD is a modified version of GRAPES (available at https://github.com/InfOmics/GRAPES ) in which the trie indexing structure has been replaced with a multi-terminal multiway decision diagram (MTMDD). 
 
+GRAPES-DD research paper is under review; it is available [here](https://www.researchgate.net/publication/343488915_GRAPES-DD_Exploiting_Decision_Diagrams_for_Index-Driven_Biomedical_Databases_Search?_ec=twitter&_ecd=eHNsLVpBbFNyN3RmMW1VdlZmNCtlWFN1akpjd0pHV2p0VWhwS0N2OFdXdE5kbjFOd0x4K1QyL3FSZm00dXY5aW1KS1RGelRmWkJBPQ%3D%3D ).
 <hr/>
 
 ### Description 
@@ -152,8 +153,3 @@ You have to mount the folders containing the graph database and the query file i
 |**-l lp**         | specify feature paths length, namely the depth of the DFS which extract paths. lp must be greather than 1, eg -lp 3. Default value is 4.
 |**-d bool**       | flag indicating if the graphs are directed (true) or undirected (false). Default value is true.
 |**-t nthreads**   | number of threads to be used during matching phase 
-
-
-
-
-

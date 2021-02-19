@@ -39,12 +39,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define NOP_LABEL 0 
 
 
+typedef struct {
+    std::queue<GRAPESLib::Graph> graphs_queue;
+    GRAPESLib::LabelMap labelMap;
+    unsigned total_num_vertices;  
+} GraphsDB; 
+
+
 namespace mtdds {
     class MultiterminalDecisionDiagram; 
-    class MtddListener; 
-    class MtddOCPTree;
     class MtmddLoaderListener; //to load data from partial tries to the mtmdd
     class QueryListener; 
+
+
 
     inline void visit_edge(MEDDLY::dd_edge& edge) {
         size_t nlevels = edge.getForest()->getDomain()->getNumVariables(); 
@@ -66,14 +73,17 @@ namespace mtdds {
         bool direct_indexing = true; 
         size_t num_graphs_in_db = 0; 
     public: 
+        VariableOrdering *v_order = nullptr;
+
         MEDDLY::forest::policies policy; 
-        MEDDLY::domain *domain = nullptr; 
         MEDDLY::forest *forest = nullptr; 
         MEDDLY::dd_edge *root = nullptr; 
         
         inline size_t num_indexed_graphs() const {
             return num_graphs_in_db; 
         }
+    private:
+        void load_from_graph_db(const GraphsDB& graphs_db);
 
     public: 
         MultiterminalDecisionDiagram() : policy(false) {
@@ -83,6 +93,8 @@ namespace mtdds {
 
         MultiterminalDecisionDiagram(const std::string& input_network_file, unsigned max_depth, bool direct, size_t buffersize); 
 
+        MultiterminalDecisionDiagram(const GraphsDB& graphs_db, unsigned max_depth, var_order_t& var_order);
+
 
         MultiterminalDecisionDiagram(const MultiterminalDecisionDiagram& mtdd) {/* TODO */}
 
@@ -91,15 +103,17 @@ namespace mtdds {
         ~MultiterminalDecisionDiagram() {
             delete root; 
             MEDDLY::destroyForest(forest); 
-            MEDDLY::destroyDomain(domain); 
+            delete v_order; 
         }
 
-        //it initializes domain and forest given the domain bound values
-        void init(const domain_bounds_t& bounds);
+
+        void init(const domain_bounds_t& bounds, const var_order_t& var_order = {});
+
+        void init(const GraphsDB& graphs_db, const unsigned max_depth, const var_order_t& var_order = {}); 
 
         //it returns the mtdd's number of levels 
         inline size_t size() const {
-            return domain->getNumVariables();
+            return v_order->size();
         }
 
         //it stores the values contained in the SingleBuffer structure into the current mtdd 
@@ -144,9 +158,10 @@ namespace mtdds {
     public: 
         SingleBuffer buffer; 
         QueryPattern query; 
-    //    Query query; 
+        const VariableOrdering& ordering; 
 
-        QueryListener(size_t elem_size, bool set_values) : buffer(elem_size, set_values), GRAPESLib::OCPTreeVisitListener() {
+        QueryListener(const VariableOrdering& var_ordering, size_t elem_size, bool set_values) 
+        : ordering(var_ordering), buffer(elem_size, set_values), GRAPESLib::OCPTreeVisitListener() {
         }
         ~QueryListener() {}
 
@@ -174,38 +189,6 @@ namespace mtdds {
         }
 
     };
-
-
-    /** Visit an OCPTreeNode and retrieved all its paths. */
-    class MtddListener : public GRAPESLib::OCPTreeVisitListener {
-    public: 
-        std::unique_ptr<SingleBuffer> buffer = nullptr; 
-        GraphNodeEncoder mapper; 
-
-        MtddListener(size_t element_size, size_t buffer_size) : GRAPESLib::OCPTreeVisitListener() {
-            buffer = std::unique_ptr<SingleBuffer>(new SingleBuffer(buffer_size, element_size)); 
-        }
-
-        ~MtddListener() {
-        }
-
-        virtual void visit_node(GRAPESLib::OCPTreeNode& n) { (void) n; } 
-        virtual void visit_leaf_node(GRAPESLib::OCPTreeNode& n) { (void) n; }
-        void visit_node(GRAPESLib::OCPTreeNode&n, MultiterminalDecisionDiagram& dd); 
-    }; 
-
-    /** Manage the entire trie structure  * */
-    class MtddOCPTree : public GRAPESLib::OCPTree { 
-
-        void build_mtdd(MtddListener& l, GRAPESLib::OCPTreeNode* n, MultiterminalDecisionDiagram*& mdd); 
-
-    public:
-        void build_mtdd(MtddListener& l, MultiterminalDecisionDiagram*& mdd); 
-
-        void visit(MtddListener& l, GRAPESLib::OCPTreeNode *n) {
-            (void) l; (void) n; 
-        }
-    }; 
 }
 
 namespace grapes2mtdds {
@@ -221,6 +204,7 @@ namespace grapes2mtdds {
     inline size_t get_path_from_node(GRAPESLib::OCPTreeNode& n, std::vector<node_label_t>& vpath, const size_t max_pathlength = 0) {
         //retrieve labels from GRAPES node
         vpath.push_back(n.label + 1); 
+
         for (GRAPESLib::OCPTreeNode* p = n.parent; p; p = p->parent) 
             if (p->parent)
                 vpath.push_back(p->label + 1); 
@@ -228,10 +212,11 @@ namespace grapes2mtdds {
         size_t pathlength = vpath.size(); 
         while (vpath.size() < max_pathlength)
             vpath.insert(vpath.begin(), NOP_LABEL);  
+
         return pathlength; 
     }
 
-    
+    void load_graph_db(const std::string& input_network_file, GraphsDB& graphs_db, bool direct); 
 }
 
 #endif

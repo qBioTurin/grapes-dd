@@ -240,14 +240,17 @@ public:
 
 	virtual bool matched_nodes(OCPTreeNode &a, OCPTreeNode &b){
 		merge_nodes(a,b);
+		return true; 
 	}
 	virtual bool unmatched_node(OCPTreeNode &a, OCPTreeNode &b){
 		//parent(b), node(b)
+		return true; 
 	}
 	virtual bool shifted_node(OCPTreeNode &a, OCPTreeNode &b){
 		//parent(a), node(b)
 		OCPTreeNode* n = a.add_child_on_tail(b.label);
 		copy_node(*n, b);
+		return true; 
 	}
 };
 

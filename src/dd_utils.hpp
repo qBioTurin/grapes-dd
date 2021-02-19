@@ -54,6 +54,7 @@ inline double get_time_interval(time_point end_t, time_point start_t) {
 }
 
 namespace mtdds {
+    class VariableOrdering; 
     struct MtddStats;
     class GraphNodeEncoder; 
     class Encoder;
@@ -61,18 +62,106 @@ namespace mtdds {
 
     //it identifies one of the indexed graphs 
     using graph_id_t = unsigned int; 
+
     //it identifies one node of a specific graph
     using node_id_t = unsigned int; 
+
     //it represent a specific node of a specific graph 
     using graph_node_t = std::pair<graph_id_t, node_id_t>; 
+
     //vector of integers used to initialize the domain of MDDs
     using domain_bounds_t = std::vector<int>;
+
+    //vector of integers used to define variable ordering to impose to MTMDD levels
+    using var_order_t = std::vector<int>; 
+
     //vector of strings used to perform path queries on MDDs 
     using label_path_t = std::vector<std::string>; 
+
     //(graph_id + node_id infos) + num_occurrences 
     using single_result_t = std::pair<graph_node_t, int>; 
+
     //vector of single query results 
     using query_result_t = std::vector<single_result_t>; 
+
+
+    class VariableOrdering {
+        // the i-th value is the domain of the i-th variable 
+        domain_bounds_t _bounds; 
+        // the i-th value is the desired position of the i-th variable in the order 
+        var_order_t _order; 
+
+        MEDDLY::domain *_domain = nullptr; 
+    public: 
+        inline VariableOrdering(unsigned n_variables) {
+            _bounds.resize(n_variables); 
+            _order.resize(n_variables); 
+        }
+
+
+        inline VariableOrdering(const domain_bounds_t& bounds, const var_order_t& var_order = {})
+        : _bounds(bounds), _order(var_order) {
+            if (var_order.empty()) {
+                for (int i = 0; i < bounds.size(); ++i) {
+                    this->_order.push_back(i);
+                }
+            }
+            else if (var_order.size() == bounds.size()) {
+                //set user-defined variable ordering
+                for (int i = 0; i < bounds.size(); ++i)  
+                    this->_bounds.at(i) = bounds.at(var_order.at(i)); 
+            } else {
+                throw std::runtime_error("Bounds and var_order arrays have different sizes.");
+            }
+
+            //build meddly domain 
+            _domain = MEDDLY::createDomainBottomUp(_bounds.data(), _bounds.size()); 
+        }  
+
+        ~VariableOrdering() { MEDDLY::destroyDomain(_domain); }
+
+        inline const domain_bounds_t& bounds() const {  return _bounds; }
+
+        inline const var_order_t& var_order() const {  return _order;  }
+
+        inline MEDDLY::domain* domain() {   return _domain;  } 
+
+        inline size_t size() const {    return _bounds.size(); }
+
+        inline void copy_variables(
+            const std::vector<node_label_t>& labelled_path, 
+            const int graph_node_id,
+            int* dest) const {
+ 
+            for (int i = labelled_path.size() - 1; i >= 0; --i)
+                dest[_order[i]] = labelled_path.at(i);
+            
+            dest[_order.back()] = graph_node_id; 
+        }
+
+        inline void write(FILE* fp) {
+            for (int i = 0; i < _bounds.size(); ++i) 
+                if (fprintf(fp, "%d %d\n", _bounds.at(i), _order.at(i)) != 2)
+                    ;
+        }
+
+        inline void read(FILE* fp) {
+            for (int i = 0; i < _bounds.size(); ++i) 
+                if (fscanf(fp, "%d %d\n", &_bounds[i], &_order[i]) != 2)
+                    ;
+        }
+
+        void show() {
+            std::cout << "Bounds: "; 
+            for (auto x: _bounds)       std::cout << x << " ";
+            std::cout << "\nOrder: ";
+            for (auto x: _order)        std::cout << x << " ";
+            std::cout << std::endl;             
+        }
+    }; 
+
+
+
 
     struct MtddStats {
         long num_vars = 0; //number of mtdd levels
@@ -263,7 +352,7 @@ public:
         delete buffer; 
     }
 
-    inline void set_string(char *str) {
+    inline void set_string(const char *str) {
         strncpy(this->buffer, str, buffersize);
         this->state = false; 
     }

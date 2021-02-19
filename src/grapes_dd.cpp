@@ -117,13 +117,6 @@ int main(int argc, char** argv) {
         end_saving = std::chrono::_V2::steady_clock::now(); 
         time_saving = get_time_interval(end_saving, start_saving); 
 
-        std::cout
-            << "Number of graphs inside the database: " << mtmdd_index.num_indexed_graphs() << "\n\n"
-            << "Time for build database index: " << time_build << "\n"
-            << "Time for save index on file: " << time_saving << "\n"
-            << "Total time: " << time_build + time_saving  << std::endl; 
-        
-
         //log stats on file  
         MtddStats stats; 
         mtmdd_index.get_stats(stats); 
@@ -141,6 +134,16 @@ int main(int argc, char** argv) {
 
         log_file = dirname(graph_file) + "/" + log_file; 
         add_to_indexing_logfile(log_file, basename(graph_file), current_stats, cpu_times); 
+
+        std::cout
+            << "Number of graphs inside the database: " << mtmdd_index.num_indexed_graphs() << "\n\n"
+            << "Num. paths encoded in MTMDD: " << stats.cardinality << "\n"
+            << "Memory required: " << stats.memory_used << " (peak = " << stats.peak_memory << ")\n"
+            << "Num nodes in MTMDD: " << stats.num_nodes << " (peak = " << stats.peak_nodes << ")\n"
+            << "Num edges: " << stats.num_edges << "\n"
+            << "Time for build database index: " << time_build << "\n"
+            << "Time for save index on file: " << time_saving << "\n"
+            << "Total time: " << time_build + time_saving  << std::endl; 
     } 
     else {
         // QUERY MATCHING 

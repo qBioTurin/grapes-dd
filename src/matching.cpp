@@ -27,22 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Options.h"
 
-//#include "sbitset.h"
-/*
-#include "Graph.h"
-#include "GraphReaders.h"
-#include "BuildManager.h"
-#include "BuilderThread.h"
-#include "BuildRunner.h"
-#include "MatchingManager.h"
-#include "MatchingThread.h"
-#include "MatchingRunner.h" */
-
 #include "MatchingManager.h"
 #include "MatchingRunner.h"
- /*
-#include "MatchingThread.h"
-#include "MatchingRunner.h" */
 
 #include "AttributeComparator.h"
 #include "VF2GraphReaders.h"
@@ -76,18 +62,16 @@ void mtdds::QueryPattern::add_path_to_node(int current_node, const LabelledPath&
 void mtdds::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatch>& final_matches) {
     MEDDLY::forest* forest = query.query_dd->getForest(); 
     MEDDLY::dd_edge& dd_query = *(query.query_dd); 
-    const unsigned max_depth = forest->getDomain()->getNumVariables();
-    const unsigned query_num_nodes = query.get_num_nodes();  
+    const var_order_t& var_order = var_ordering.var_order(); 
+    const unsigned query_num_nodes = query.get_num_nodes(); 
+    const int node_encoded_index = var_order.back() + 1;  
 
     std::map<int, GraphMatch> matched_graphs; //maps from graph id to the list of its matchable vertices 
-
-
-  //  std::cout << "My query is:\n";  query.show();
 
     MEDDLY::enumerator e(qmatches); 
     while (e) {
         //obtain current node from pruned mtmdd 
-        const int current_node_encoded_id = e.getAssignments()[max_depth]; 
+        const int current_node_encoded_id = e.getAssignments()[node_encoded_index];   
         int current_graph, current_node;  
         
         std::tie(current_graph, current_node) = gn_enc.inverse_map(current_node_encoded_id); 
@@ -107,10 +91,9 @@ void mtdds::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
         do {
             //get starting path from the current node in the pruned mtmdd
             const int *current_dd_path = e.getAssignments(); 
-            /* LabelledPath graph_path(current_dd_path, max_depth);  std::cout << "Current path is "; graph_path.print(); */
-
+            
             //get query nodes from which the current path starts
-            const LabelledPath& current_path = *(query.unique_paths.find(LabelledPath(current_dd_path, max_depth))); 
+            const LabelledPath& current_path = *(query.unique_paths.find(LabelledPath(current_dd_path + 1, var_order)));
             const std::set<int>& candidate_query_nodes(query.find_starting_nodes(current_path));
 
             //update node support using candidate query nodes 
@@ -120,7 +103,7 @@ void mtdds::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
                     ++(it_map.first->second); 
             }
             ++e;
-        } while (e && e.getAssignments()[max_depth] == current_node_encoded_id); 
+        } while (e && e.getAssignments()[node_encoded_index] == current_node_encoded_id);
 
         for (auto it = node_support.begin(); it != node_support.end(); ++it) {
             int current_query_node = it->first; 
@@ -137,7 +120,7 @@ void mtdds::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
                     int* buffer_entry = query_path->get_pointer2buffer(); 
                     int query_n_occ = query_path->get_occurrence_number(), vertex_n_occ; 
 
-                    buffer_entry[max_depth] = current_node_encoded_id; 
+                    buffer_entry[node_encoded_index] = current_node_encoded_id;  
                     forest->evaluate(qmatches, buffer_entry, vertex_n_occ); 
 
                     if (vertex_n_occ / query_n_occ < query_n_occ) {
@@ -157,7 +140,6 @@ void mtdds::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
     for (auto x = matched_graphs.begin(); x != matched_graphs.end(); ++x)
         if (x->second.is_complete_match()) {
             final_matches.emplace_back(x->second); 
-//            x->second.report_match();
         } 
 }
 

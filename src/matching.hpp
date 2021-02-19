@@ -56,8 +56,13 @@ namespace mtdds {
     public:
         inline LabelledPath() : base() {}
 
-        inline LabelledPath(const int* vpath, int plength) 
-            : base(vpath + 1, vpath + plength), buffer_location(nullptr) {}
+        inline LabelledPath(const int* vpath, const var_order_t& var_ordering)
+        : base(var_ordering.size() - 1) {
+            int index = 0; 
+
+            for (auto it = begin(); it != end(); ++it, ++index) 
+                *it = vpath[var_ordering[index]]; 
+        }
 
         inline LabelledPath(const base& path) 
             : base(path), buffer_location(nullptr) {} 
@@ -150,9 +155,10 @@ namespace mtdds {
     class MatchedQuery {
         const QueryPattern& query; 
         const GraphNodeEncoder& gn_enc; 
+        const VariableOrdering& var_ordering;
     public:
-        MatchedQuery(const QueryPattern& query, const GraphNodeEncoder& gn_enc) 
-            : query(query), gn_enc(gn_enc) {}
+        MatchedQuery(const QueryPattern& query, const GraphNodeEncoder& gn_enc, const VariableOrdering& var_ordering) 
+            : var_ordering(var_ordering), query(query), gn_enc(gn_enc) {}
 
         void match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatch>& final_matches); 
     }; 

@@ -10,6 +10,12 @@ SETTINGS=$(OPTIMIZE) $(DEBUG) # $(WARNS)
 
 all: grapes_dd
 
+ordeeeeer: try_order.o mtdds.o matching.o 
+	$(CC) -o ordeeeeer $^ $(LINK_GRAPES) $(SETTINGS)
+
+try_order.o: try_order.cpp
+	$(CC) -c try_order.cpp $(INCLUDE_GRAPES) $(SETTINGS)
+
 grapes_dd: grapes_dd.o mtdds.o  matching.o
 	$(CC) -o $(NAME) $^ $(LINK_GRAPES) $(SETTINGS)
 
