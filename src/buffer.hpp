@@ -23,19 +23,19 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#ifndef SINGLE_BUFFER_HPP
-#define SINGLE_BUFFER_HPP
+#ifndef BUFFER_HPP
+#define BUFFER_HPP
 
 #include <iostream>
 #include <vector>
 
 
 /** Buffer for the data of a single graph. */
-class SingleBuffer : private std::vector<int*> { 
+class Buffer : private std::vector<int*> { 
     using base = std::vector<int*>; 
 
     //iterator to the current buffer 
-    SingleBuffer::iterator current; 
+    Buffer::iterator current; 
     
     //container for output values 
     std::vector<int> values; 
@@ -55,11 +55,11 @@ public:
     //size of an internal buffer 
     const size_t element_size; 
 
-    inline SingleBuffer(size_t elem_size, bool set_values = true); 
+    inline Buffer(size_t elem_size, bool set_values = true); 
 
-    inline SingleBuffer(size_t buffersize, size_t elem_size, bool set_values=true);
+    inline Buffer(size_t buffersize, size_t elem_size, bool set_values=true);
 
-    inline ~SingleBuffer() {
+    inline ~Buffer() {
         for (auto it = begin(); it != end(); ++it)
             delete[] *it; 
     }
@@ -73,14 +73,13 @@ public:
     inline buffer_slot_t push_slot(int value); 
     inline buffer_slot_t push_slot(); 
 
-    inline SingleBuffer::base::iterator begin() { return base::begin(); }
-    inline SingleBuffer::base::iterator end() { return base::end(); }
-
-
+    inline Buffer::base::iterator begin() { return base::begin(); }
+    inline Buffer::base::iterator end() { return base::end(); }
 
     inline void save_value(const int v);
 
     inline int** data() { return base::data(); }
+
     inline size_t size() { return base::size(); }
 
     inline int* values_data() {
@@ -95,14 +94,14 @@ public:
 }; 
 
 
-SingleBuffer::SingleBuffer(size_t elem_size, bool set_values) :
+Buffer::Buffer(size_t elem_size, bool set_values) :
 enable_values(set_values), 
 num_current_elements(0), 
 element_size(elem_size) {
     current = begin(); 
 }
 
-SingleBuffer::SingleBuffer(size_t buffersize, size_t elem_size, bool set_values) :
+Buffer::Buffer(size_t buffersize, size_t elem_size, bool set_values) :
 enable_values(set_values), 
 num_current_elements(0), 
 element_size(elem_size) {
@@ -120,7 +119,7 @@ element_size(elem_size) {
 }
 
 
-inline void SingleBuffer::flush() {
+inline void Buffer::flush() {
     current = begin(); 
     num_current_elements = 0; 
 
@@ -128,7 +127,7 @@ inline void SingleBuffer::flush() {
         current_value = values.begin(); 
 }
 
-inline SingleBuffer::buffer_slot_t SingleBuffer::get_slot() {
+inline Buffer::buffer_slot_t Buffer::get_slot() {
     buffer_slot_t ret(*current, false); 
     ++num_current_elements;
 
@@ -138,20 +137,20 @@ inline SingleBuffer::buffer_slot_t SingleBuffer::get_slot() {
     return ret; 
 }
 
-inline SingleBuffer::buffer_slot_t SingleBuffer::push_slot(int value) {
+inline Buffer::buffer_slot_t Buffer::push_slot(int value) {
     buffer_slot_t ret(this->push_slot()); 
     values.push_back(value);
     return ret; 
 }
 
-inline SingleBuffer::buffer_slot_t SingleBuffer::push_slot() {
+inline Buffer::buffer_slot_t Buffer::push_slot() {
     buffer_slot_t ret(allocate(), false); 
     base::push_back(ret.first); 
     ++num_current_elements; 
     return ret;
 }
 
-inline void SingleBuffer::save_value(const int v) {
+inline void Buffer::save_value(const int v) {
     if (enable_values) {
         *current_value = v; 
 
@@ -160,7 +159,7 @@ inline void SingleBuffer::save_value(const int v) {
     }
 }
 
-inline void SingleBuffer::show_content() {
+inline void Buffer::show_content() {
     std::cout << "Buffer has " << num_elements() << " elements\n";
     for (int i = 0; i < num_current_elements; ++i) {
         int *p = at(i); 

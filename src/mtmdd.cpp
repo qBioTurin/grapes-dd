@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <queue> 
 #include <chrono>
 
-#include "mtdds.hpp"
+#include "mtmdd.hpp"
 
 #include "Graph.h"
 #include "LabelMap.h"
@@ -41,7 +41,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-using namespace mtdds; 
+using namespace mtmdd; 
 
 
 
@@ -60,7 +60,7 @@ void MultiterminalDecisionDiagram::load_from_graph_db(const GraphsDB& graphs_db)
     unsigned max_depth = num_vars - 1;
     unsigned buffersize = 10000; 
 
-    SingleBuffer dd_buffer(buffersize, num_vars + 1, true); 
+    Buffer dd_buffer(buffersize, num_vars + 1, true); 
     MtmddLoaderListener mlistener(*this, dd_buffer); 
 
     while (!graphs_queue.empty()) {
@@ -107,7 +107,7 @@ MultiterminalDecisionDiagram::MultiterminalDecisionDiagram(const std::string& in
 : MultiterminalDecisionDiagram() {
 
     GraphsDB graphs_db;
-    grapes2mtdds::load_graph_db(input_network_file, graphs_db, direct); 
+    grapes2dd::load_graph_db(input_network_file, graphs_db, direct); 
 
     init(graphs_db, max_depth);
 }
@@ -121,10 +121,14 @@ MultiterminalDecisionDiagram::MultiterminalDecisionDiagram(const GraphsDB& graph
 
 
 void MultiterminalDecisionDiagram::init(const domain_bounds_t& bounds, const var_order_t& var_order) {
-    this->v_order = new VariableOrdering(bounds, var_order); 
-
+    v_order = var_order.empty() 
+              ? new VariableOrdering(bounds)             //default order 
+              : new VariableOrdering(bounds, var_order); //user-defined order 
     forest = this->v_order->domain()->createForest(
-        false, MEDDLY::forest::INTEGER, MEDDLY::forest::MULTI_TERMINAL, policy
+        false, 
+        MEDDLY::forest::INTEGER,                        //internal nodes have integer values 
+        MEDDLY::forest::MULTI_TERMINAL,                 //and also terminal nodes 
+        policy
     );
     root = new MEDDLY::dd_edge(forest); 
 }
@@ -133,14 +137,14 @@ void MultiterminalDecisionDiagram::init(const GraphsDB& graphs_db, const unsigne
     //init variables' domain
     domain_bounds_t bounds(max_depth + 1, graphs_db.labelMap.size() + 1); 
     bounds.back() = graphs_db.total_num_vertices + 1; 
-    //init mtmdd data structure 
+    //init mtmdd data structure
     init(bounds, var_order); 
     //load labelled paths into mtmdd
     load_from_graph_db(graphs_db); 
 }
 
 void MultiterminalDecisionDiagram::write(const std::string& out_ddfile) {
-    std::string outfilename = grapes2mtdds::get_dd_index_name(out_ddfile, size() - 1); 
+    std::string outfilename = grapes2dd::get_dd_index_name(out_ddfile, size() - 1); 
     FILE *fp = fopen(outfilename.c_str(), "w"); 
 
     //write n. dd levels, n. labels and n. vertices 
@@ -170,7 +174,7 @@ void MultiterminalDecisionDiagram::write(const std::string& out_ddfile) {
 
 
 void MultiterminalDecisionDiagram::read(const std::string& in_ddfile, const size_t lp) {
-    std::string infilename = grapes2mtdds::get_dd_index_name(in_ddfile, lp); 
+    std::string infilename = grapes2dd::get_dd_index_name(in_ddfile, lp); 
     FILE *fp = fopen(infilename.c_str(), "r"); 
     char buffer[128]; 
     int depth, nlabels, nvertices; 
@@ -188,9 +192,8 @@ void MultiterminalDecisionDiagram::read(const std::string& in_ddfile, const size
     //read variable ordering from file and init DD 
     VariableOrdering v_order(depth);
     v_order.read(fp); 
+    init(v_order); 
 
-    this->init(v_order.bounds(), v_order.var_order()); 
-     
     //init label map 
     for (int i = 0; i < nlabels; ++i) {
         if (fscanf(fp, "%s\n", buffer) != 1) {
@@ -217,7 +220,7 @@ void MultiterminalDecisionDiagram::read(const std::string& in_ddfile, const size
 }
 
 
-void MultiterminalDecisionDiagram::get_stats(MtddStats& stats) const {
+void MultiterminalDecisionDiagram::get_stats(StatsDD& stats) const {
     stats.num_nodes = forest->getCurrentNumNodes(); 
     stats.peak_nodes = forest->getPeakNumNodes(); 
     stats.memory_used = forest->getCurrentMemoryUsed();
@@ -235,13 +238,13 @@ void MultiterminalDecisionDiagram::get_stats(MtddStats& stats) const {
 void MtmddLoaderListener::visit_node(GRAPESLib::OCPTreeNode& n) {
     const size_t max_pathlength = _buffer.element_size - 2; 
     std::vector<node_label_t> path; 
-    size_t pathlength = grapes2mtdds::get_path_from_node(n, path, max_pathlength); 
+    size_t pathlength = grapes2dd::get_path_from_node(n, path, max_pathlength); 
 
     for (auto oit = n.gsinfos.begin(); oit != n.gsinfos.end(); ++oit) {
         //iterate over starting nodes of the current path in the current graph 
         for (sbitset::iterator sit = oit->second.from_nodes.first_ones(); sit != oit->second.from_nodes.end(); sit.next_ones()) { 
             //get the first slot in the buffer 
-            SingleBuffer::buffer_slot_t buffer_slot(_buffer.get_slot()); 
+            Buffer::buffer_slot_t buffer_slot(_buffer.get_slot()); 
       
             //store labels and starting node in the buffer slot 
             _mtmdd.v_order->copy_variables(
@@ -263,7 +266,7 @@ void MtmddLoaderListener::visit_node(GRAPESLib::OCPTreeNode& n) {
 void QueryListener::visit_node(GRAPESLib::OCPTreeNode& n) {
     LabelledPath labelled_path; 
     const size_t max_pathlength = buffer.element_size - 2; 
-    size_t pathlength = grapes2mtdds::get_path_from_node(n, labelled_path, max_pathlength);
+    size_t pathlength = grapes2dd::get_path_from_node(n, labelled_path, max_pathlength);
 
     //iterate over paths 
     for (auto oit = n.gsinfos.begin(); oit != n.gsinfos.end(); ++oit) {
@@ -277,7 +280,7 @@ void QueryListener::visit_node(GRAPESLib::OCPTreeNode& n) {
         for (sbitset::iterator sit = oit->second.from_nodes.first_ones(); sit != oit->second.from_nodes.end(); sit.next_ones()) {
             if (insert_in_buffer_flag) {
                 //store labels  
-                SingleBuffer::buffer_slot_t buffer_slot(buffer.push_slot(oit->second.path_occurrence)); 
+                Buffer::buffer_slot_t buffer_slot(buffer.push_slot(oit->second.path_occurrence)); 
 
                 //copy labelled path in the buffer slot, replacing starting node information with a placeholder  
                 ordering.copy_variables(labelled_path, MEDDLY::DONT_CARE, buffer_slot.first + 1);
@@ -330,7 +333,7 @@ std::vector<GraphMatch> MultiterminalDecisionDiagram::match(const std::string& q
     times.push_back(get_time_interval(end_query_indexing, start_query_indexing)); 
     //end query indexing
 
-    SingleBuffer& b = ql.buffer; 
+    Buffer& b = ql.buffer; 
     //extract query paths from index
     start_dd_intersection = std::chrono::_V2::steady_clock::now(); 
 
@@ -362,10 +365,7 @@ std::vector<GraphMatch> MultiterminalDecisionDiagram::match(const std::string& q
 }
 
 
-void grapes2mtdds::load_graph_db(
-    const std::string& input_network_file, 
-    GraphsDB& graphs_db,
-    bool direct)  {
+void grapes2dd::load_graph_db(const std::string& input_network_file, GraphsDB& graphs_db, bool direct)  {
 
     std::queue<GRAPESLib::Graph>& graphs_queue = graphs_db.graphs_queue; 
     GRAPESLib::LabelMap& labelMap = graphs_db.labelMap; 
@@ -393,4 +393,86 @@ void grapes2mtdds::load_graph_db(
         << "Number of graphs: " << graphs_queue.size() << "\n"
         << "Num labels: " << labelMap.size() << "\n"
         << "Total number of vertices: " << total_num_vertices << std::endl; 
+}
+
+
+void MultiterminalDecisionDiagram::save_data(const std::string& filename) {
+    std::ofstream fout(filename, std::ios::out); 
+    const var_order_t& order = v_order->var_order();
+    const domain_bounds_t& domains = v_order->bounds(); 
+    const int offset = order.size() + 1; 
+
+    for (auto it = order.begin(); it != order.end(); ++it)  fout << "v_" << *it << "\t";
+    fout << "terminal\n";
+
+    for (auto it = domains.begin(); it != domains.end(); ++it)  fout << *it << "\t";
+    fout << "\n"; 
+    
+    for (MEDDLY::enumerator e(*root); e; ++e) {
+        const int *variables = e.getAssignments(); 
+        int value; 
+        e.getValue(value); 
+
+        std::ostringstream stream; 
+        std::copy(variables + 1, variables + offset, std::ostream_iterator<int>(stream, "\t"));
+        fout << stream.str() << value << "\n";
+    }
+}
+
+
+void MultiterminalDecisionDiagram::load_data(const std::string& filename) {
+    std::ifstream fin(filename, std::ios::in); 
+    var_order_t order; 
+    domain_bounds_t bounds; 
+    Parser parser("\t");
+    std::string line, line1; 
+
+    //first two lines are for variable order and variable's domain
+    std::getline(fin, line); 
+    std::getline(fin, line1); 
+
+    //parse variables 
+    parser.set_string(line.c_str()); 
+    try {
+        char *p; 
+        while (p = parser.parse()) 
+            order.push_back(std::stoi(std::string(p+2)));
+    } catch (std::exception& e) {}
+
+    //parse domains
+    parser.set_string(line1.c_str());
+    try {
+        while (true) 
+            bounds.push_back(parser.parseint()); 
+    } catch (std::exception& e) {}
+
+    //initialize empty mtmdd 
+    init(VariableOrdering(bounds, order, false));
+
+    Buffer buffer(50000, order.size() + 1);
+    
+    //fill data into mtmdd 
+    try {
+        while (fin.good()) {
+            Buffer::buffer_slot_t slot(buffer.get_slot());
+            std::getline(fin, line); 
+            parser.set_string(line.c_str()); 
+            
+            for (int i = 1; i <= bounds.size(); ++i)
+                slot.first[i] = parser.parseint(); 
+
+            buffer.save_value(parser.parseint());
+
+            if (!slot.second) {
+                insert(buffer); 
+                buffer.flush(); 
+            }
+        }
+    } catch (std::invalid_argument& e) {
+    }
+
+
+    if (buffer.num_elements() > 0) {
+        insert(buffer); 
+    }
 }

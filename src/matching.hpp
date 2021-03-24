@@ -33,14 +33,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iterator>
 #include <meddly.h>
 
-#include "single_buffer.hpp"
+#include "buffer.hpp"
 #include "dd_utils.hpp"
 
 #include "OCPTreeListeners.h"
 #include "typedefs.h"
 
 
-namespace mtdds {
+namespace mtmdd {
     class LabelledPath; 
     class QueryPattern; 
     class MatchedQuery; 

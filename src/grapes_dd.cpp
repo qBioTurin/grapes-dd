@@ -29,10 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <meddly.h>
 #include <meddly_expert.h>
 
-#include "mtdds.hpp"
+#include "mtmdd.hpp"
 #include "cxxopts.hpp"
 
-using namespace mtdds; 
+using namespace mtmdd; 
 
 
 void create_logfile_indexing(const std::string& logname); 
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
         if (result["query"].count() > 0) {
             query_file.assign(result["query"].as<std::string>()); 
 
-            if (!grapes2mtdds::dd_already_indexed(graph_file, max_depth)) {
+            if (!grapes2dd::dd_already_indexed(graph_file, max_depth)) {
                 std::cerr << "You have to index the graph db before to perform query matching!" << std::endl; 
                 return 1; 
             }
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
             << "Input database file: " << graph_file << "\n\n";
 
         start_build = std::chrono::_V2::steady_clock::now(); 
-        mtdds::MultiterminalDecisionDiagram mtmdd_index(graph_file, max_depth, direct_graph, buffersize); 
+        mtmdd::MultiterminalDecisionDiagram mtmdd_index(graph_file, max_depth, direct_graph, buffersize); 
         end_build = std::chrono::_V2::steady_clock::now(); 
         time_build = get_time_interval(end_build, start_build); 
 
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
         time_saving = get_time_interval(end_saving, start_saving); 
 
         //log stats on file  
-        MtddStats stats; 
+        StatsDD stats; 
         mtmdd_index.get_stats(stats); 
 
         std::vector<long> current_stats{
@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
     } 
     else {
         // QUERY MATCHING 
-        mtdds::MultiterminalDecisionDiagram mtmdd_index; 
+        mtmdd::MultiterminalDecisionDiagram mtmdd_index; 
         time_point start_loading, end_loading; 
         std::vector<double> stages_times;  
         double total_time = 0; 
@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
         std::vector<GraphMatch> matched_graphs(mtmdd_index.match(query_file, stages_times)); 
         std::map<std::string, double> matching_stats;
 
-        mtdds::graph_find(graph_file,
+        mtmdd::graph_find(graph_file,
             query_file, 
             direct_graph, 
             nthreads, 
@@ -197,7 +197,7 @@ int main(int argc, char** argv) {
             << "Matching time: " << matching_stats["matching_time"] << "\n"
             << "Total time: " << total_time  << "\n"; 
 
-        MtddStats stats; 
+        StatsDD stats; 
         mtmdd_index.get_stats(stats); 
 
         std::vector<long> current_stats {

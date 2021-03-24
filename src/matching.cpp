@@ -38,7 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-void mtdds::QueryPattern::add_path_to_node(int current_node, const LabelledPath& path) {
+void mtmdd::QueryPattern::add_path_to_node(int current_node, const LabelledPath& path) {
     //get labelled path  pointer 
     LabelledPathSet::iterator it_path = unique_paths.emplace(path).first; 
     const LabelledPath* label_pointer = &(*it_path); 
@@ -59,7 +59,7 @@ void mtdds::QueryPattern::add_path_to_node(int current_node, const LabelledPath&
 }
 
 
-void mtdds::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatch>& final_matches) {
+void mtmdd::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatch>& final_matches) {
     MEDDLY::forest* forest = query.query_dd->getForest(); 
     MEDDLY::dd_edge& dd_query = *(query.query_dd); 
     const var_order_t& var_order = var_ordering.var_order(); 
@@ -144,7 +144,7 @@ void mtdds::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
 }
 
 
-void mtdds::GraphMatch::get_node_cands(GRAPESLib::node_cands_t& ncands) const {
+void mtmdd::GraphMatch::get_node_cands(GRAPESLib::node_cands_t& ncands) const {
     int q_index = 0;
 
     for (auto it = begin(); it != end(); ++it, ++q_index) {
@@ -164,7 +164,7 @@ void mtdds::GraphMatch::get_node_cands(GRAPESLib::node_cands_t& ncands) const {
 }
 
 
-void mtdds::graph_find(
+void mtmdd::graph_find(
         const std::string& input_network_file, 
         const std::string& query_graph_file,  
         bool direct_flag,

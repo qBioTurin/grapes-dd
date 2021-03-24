@@ -1,4 +1,4 @@
-FROM gcc:6.3.0
+FROM gcc:9.3.0
 
 RUN apt update && \
     apt install -y \

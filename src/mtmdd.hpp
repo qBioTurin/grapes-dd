@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <meddly.h>
 
 #include "matching.hpp"
-#include "single_buffer.hpp"
+#include "buffer.hpp"
 #include "dd_utils.hpp"
 
 #include "OCPTreeListeners.h"
@@ -46,7 +46,7 @@ typedef struct {
 } GraphsDB; 
 
 
-namespace mtdds {
+namespace mtmdd {
     class MultiterminalDecisionDiagram; 
     class MtmddLoaderListener; //to load data from partial tries to the mtmdd
     class QueryListener; 
@@ -86,17 +86,15 @@ namespace mtdds {
         void load_from_graph_db(const GraphsDB& graphs_db);
 
     public: 
+        //empty decision diagram with uninitialized domain (has to be defined before initialization)
         MultiterminalDecisionDiagram() : policy(false) {
             policy.setPessimistic(); 
         }
 
-
+        /* build mtmdd from a network, by extracting all paths up to length = max_depth */ 
         MultiterminalDecisionDiagram(const std::string& input_network_file, unsigned max_depth, bool direct, size_t buffersize); 
 
         MultiterminalDecisionDiagram(const GraphsDB& graphs_db, unsigned max_depth, var_order_t& var_order);
-
-
-        MultiterminalDecisionDiagram(const MultiterminalDecisionDiagram& mtdd) {/* TODO */}
 
         MultiterminalDecisionDiagram(const domain_bounds_t& bounds); 
 
@@ -107,17 +105,25 @@ namespace mtdds {
         }
 
 
+        void init(const VariableOrdering& ordering) {
+            v_order = new VariableOrdering(ordering); 
+            forest = v_order->domain()->createForest(
+                false, MEDDLY::forest::INTEGER, MEDDLY::forest::MULTI_TERMINAL, policy
+            );
+            root = new MEDDLY::dd_edge(forest); 
+        }
+
         void init(const domain_bounds_t& bounds, const var_order_t& var_order = {});
 
         void init(const GraphsDB& graphs_db, const unsigned max_depth, const var_order_t& var_order = {}); 
 
-        //it returns the mtdd's number of levels 
+        //it returns the mtmdd's number of levels 
         inline size_t size() const {
             return v_order->size();
         }
 
-        //it stores the values contained in the SingleBuffer structure into the current mtdd 
-        inline void insert(SingleBuffer& buffer) {
+        //it stores the values contained in the Buffer structure into the current mtmdd 
+        inline void insert(Buffer& buffer) {
             try {
                 MEDDLY::dd_edge tmp(forest); 
                 forest->createEdge(buffer.data(), buffer.values_data(), buffer.num_elements(), tmp); 
@@ -144,25 +150,29 @@ namespace mtdds {
             }
         }
 
-        //it saves on a file the content of this mtdd
+        //it saves on a file the content of this mtmdd
         void write(const std::string& out_ddfile); 
 
-        //it fill this mtdd loading data from a file 
+        //it fill this mtmdd loading data from a file 
         void read(const std::string& in_ddfile, const size_t lp); 
 
-        //it returns a set of stats of the current mtdd 
-        void get_stats(MtddStats& stats) const;
+        //it returns a set of stats of the current mtmdd 
+        void get_stats(StatsDD& stats) const;
+
+        void save_data(const std::string& filename); 
+        void load_data(const std::string& filename);
     }; 
 
     class QueryListener : public GRAPESLib::OCPTreeVisitListener {
     public: 
-        SingleBuffer buffer; 
+        Buffer buffer; 
         QueryPattern query; 
         const VariableOrdering& ordering; 
 
         QueryListener(const VariableOrdering& var_ordering, size_t elem_size, bool set_values) 
         : ordering(var_ordering), buffer(elem_size, set_values), GRAPESLib::OCPTreeVisitListener() {
         }
+
         ~QueryListener() {}
 
         virtual void visit_node(GRAPESLib::OCPTreeNode& n); 
@@ -175,10 +185,10 @@ namespace mtdds {
 
     class MtmddLoaderListener : public GRAPESLib::OCPTreeVisitListener {
     public: 
-        SingleBuffer& _buffer; 
+        Buffer& _buffer; 
         MultiterminalDecisionDiagram& _mtmdd; 
 
-        MtmddLoaderListener(MultiterminalDecisionDiagram& mtmdd, SingleBuffer& buffer)
+        MtmddLoaderListener(MultiterminalDecisionDiagram& mtmdd, Buffer& buffer)
         : _buffer(buffer), _mtmdd(mtmdd) {
         }
 
@@ -191,7 +201,7 @@ namespace mtdds {
     };
 }
 
-namespace grapes2mtdds {
+namespace grapes2dd {
 
     inline std::string get_dd_index_name(const std::string& input_network_file, const size_t lp) {
         return input_network_file + "." + std::to_string(lp) + ".index.mtdd";
