@@ -1,0 +1,6 @@
+src/*.o
+src/*.gch
+src/grapes_dd 
+example/*/*
+!example/*/*.gfu
+!example/*/*.gfd

@@ -105,7 +105,6 @@ void MultiterminalDecisionDiagram::load_from_graph_db(const GraphsDB& graphs_db)
 
 MultiterminalDecisionDiagram::MultiterminalDecisionDiagram(const std::string& input_network_file, unsigned max_depth, bool direct, size_t buffersize) 
 : MultiterminalDecisionDiagram() {
-
     GraphsDB graphs_db;
     grapes2dd::load_graph_db(input_network_file, graphs_db, direct); 
 
@@ -144,81 +143,55 @@ void MultiterminalDecisionDiagram::init(const GraphsDB& graphs_db, const unsigne
 }
 
 void MultiterminalDecisionDiagram::write(const std::string& out_ddfile) {
-    std::string outfilename = grapes2dd::get_dd_index_name(out_ddfile, size() - 1); 
-    FILE *fp = fopen(outfilename.c_str(), "w"); 
+    std::string outfilename = grapes2dd::get_dd_index_name(out_ddfile, size() - 1);
+    std::ofstream fo(outfilename); 
 
-    //write n. dd levels, n. labels and n. vertices 
-    fprintf(fp, "%lu %lu %lu\n", size(), labelMapping.size(), graphNodeMapping.size()); 
+    fo  << size() << " "                    //mtmdd depth 
+        << labelMapping.size() << " "       //number of labels
+        << graphNodeMapping.size() << "\n"  //number of vertices 
+        << *v_order                         //variable ordering
+        << labelMapping                     //labels sorted by mapped value 
+        << graphNodeMapping;                //graphs nodes sorted by mapped values 
+    fo.close(); 
 
-    //write var ordering 
-    this->v_order->write(fp); 
-
-    //write labels sorted by mapped value
-    std::vector<std::string> labels(labelMapping.size()); 
-    for (const auto& x: labelMapping) 
-        labels.at(x.second - 1).assign(x.first); 
-    for (const auto& x: labels) 
-        fprintf(fp, "%s\n", x.c_str());  
-    //write pairs graph - node sorted by mapped value 
-    std::vector<graph_node_t> nodes(graphNodeMapping.size()); 
-    for (const auto& x: graphNodeMapping)
-        nodes.at(x.second - 1) = x.first; 
-    for (const auto& x: nodes) 
-        fprintf(fp, "%d %d\n", x.first, x.second); 
-
-    //write dd
-    MEDDLY::FILE_output fo(fp); 
-    forest->writeEdges(fo, this->root, 1); 
+    FILE *fp = fopen(outfilename.c_str(), "a"); 
+    MEDDLY::FILE_output handler(fp); 
+    forest->writeEdges(handler, this->root, 1);
     fclose(fp); 
 }
 
 
 void MultiterminalDecisionDiagram::read(const std::string& in_ddfile, const size_t lp) {
     std::string infilename = grapes2dd::get_dd_index_name(in_ddfile, lp); 
-    FILE *fp = fopen(infilename.c_str(), "r"); 
-    char buffer[128]; 
+    std::ifstream fi(infilename, std::ios::in);
     int depth, nlabels, nvertices; 
 
-    if (fp == NULL) {
-        std::cerr << "Cannot open file " << infilename << std::endl; 
-        exit(1); 
-    }
+    fi >> depth >> nlabels >> nvertices; 
+    VariableOrdering v_order(depth); 
+    v_order.read(fi); 
+    init(v_order);
 
-    if (fscanf(fp, "%d %d %d\n", &depth, &nlabels, &nvertices) != 3) {
-        std::cerr << "fscanf failed in reading header" << std::endl; 
-        exit(1); 
-    }
+    labelMapping.read(fi, nlabels);   
+    graphNodeMapping.read(fi);  
+    num_graphs_in_db = graphNodeMapping.num_graphs();
+    
+    fi.close();
 
-    //read variable ordering from file and init DD 
-    VariableOrdering v_order(depth);
-    v_order.read(fp); 
-    init(v_order); 
+    FILE *fp = fopen(infilename.c_str(), "r");
+    /** skip those lines containing metadata we've already read; 
+     *  specifically: one line for each:
+     *  - mtmdd level, 
+     *  - label,
+     *  - graph, 
+     *  PLUS two additional lines (the header and the total number of graphs) */
+    for (int lines_to_skip = depth + nlabels + num_graphs_in_db + 2; lines_to_skip > 0; --lines_to_skip) 
+        if (fscanf(fp, "%*[^\n]\n") != 0)
+            throw std::logic_error("This cannot happen! If it happens, there is something really wrong!");
 
-    //init label map 
-    for (int i = 0; i < nlabels; ++i) {
-        if (fscanf(fp, "%s\n", buffer) != 1) {
-            std::cerr << "Error in reading labels from " << infilename << " file" << std::endl; 
-            exit(1); 
-        }
-        labelMapping.map(std::string(buffer)); 
-    }
-    //init graph node map 
-    for (int i = 0; i < nvertices; ++i) {
-        int tmp_graph_id, tmp_node_id;
-        if (fscanf(fp, "%d %d\n", &tmp_graph_id, &tmp_node_id) != 2) {
-            std::cerr << "Error in reading graph node pairs from " << infilename << " file" << std::endl; 
-            exit(1); 
-        }
-        graphNodeMapping.map(tmp_graph_id, tmp_node_id); 
-    }
-    graphNodeMapping.build_inverse_mapping();
-    num_graphs_in_db = graphNodeMapping.num_graphs();   
- 
-    MEDDLY::FILE_input fi(fp); 
-    forest->readEdges(fi, this->root, 1); 
-    fclose(fp); 
+    MEDDLY::FILE_input handler(fp);
+    forest->readEdges(handler, this->root, 1);
+    fclose(fp);  
 }
-
 
 void MultiterminalDecisionDiagram::get_stats(StatsDD& stats) const {
     stats.num_nodes = forest->getCurrentNumNodes(); 
@@ -251,7 +224,7 @@ void MtmddLoaderListener::visit_node(GRAPESLib::OCPTreeNode& n) {
                 path,                                                //labelled path of length L 
                 _mtmdd.graphNodeMapping.map(oit->first, sit.first),  //starting vertex of the path (encoded)
                 1 + buffer_slot.first                                //destination (array of length L + 1)
-            ); 
+            );  
             //store number of occurrences of the path in the current graph 
             _buffer.save_value(oit->second.path_occurrence); 
 
@@ -298,12 +271,10 @@ void QueryListener::visit_node(GRAPESLib::OCPTreeNode& n) {
 }
 
 
-std::vector<GraphMatch> MultiterminalDecisionDiagram::match(const std::string& query_graph_file, std::vector<double>& times) {
+std::vector<GraphMatch> MultiterminalDecisionDiagram::match(const std::string& query_graph_file, unsigned nthreads, std::vector<double>& times) {
     std::ifstream is(query_graph_file.c_str(), std::ios::in);
     GRAPESLib::OCPTree query_tree;
     const int max_depth = size() - 1;
-    //to parametrize
-    const int NTHREADS = 1; 
     const VariableOrdering& var_ordering = *v_order; 
 
     time_point start_query_indexing, start_dd_intersection, start_query_filtering; 
@@ -318,7 +289,7 @@ std::vector<GraphMatch> MultiterminalDecisionDiagram::match(const std::string& q
     //1. create query trie 
     GRAPESLib::GraphReader_gff greader(grapesLabelMap, is);
     greader.direct = direct_indexing;
-    GRAPESLib::DefaultBuildManager bman(query_tree, greader, max_depth, NTHREADS);
+    GRAPESLib::DefaultBuildManager bman(query_tree, greader, max_depth, nthreads);
     GRAPESLib::OnePathListener plistener;
     GRAPESLib::DFSGraphVisitor gvisitor(plistener);
     GRAPESLib::BuildRunner buildrun(bman, gvisitor, 1);
@@ -366,7 +337,6 @@ std::vector<GraphMatch> MultiterminalDecisionDiagram::match(const std::string& q
 
 
 void grapes2dd::load_graph_db(const std::string& input_network_file, GraphsDB& graphs_db, bool direct)  {
-
     std::queue<GRAPESLib::Graph>& graphs_queue = graphs_db.graphs_queue; 
     GRAPESLib::LabelMap& labelMap = graphs_db.labelMap; 
 
@@ -389,7 +359,7 @@ void grapes2dd::load_graph_db(const std::string& input_network_file, GraphsDB& g
     graphs_db.total_num_vertices = total_num_vertices; 
 
     std::cout 
-        << "Input graph database: " << input_network_file << "\n"    
+    //    << "Input graph database: " << input_network_file << "\n"    
         << "Number of graphs: " << graphs_queue.size() << "\n"
         << "Num labels: " << labelMap.size() << "\n"
         << "Total number of vertices: " << total_num_vertices << std::endl; 
@@ -470,7 +440,6 @@ void MultiterminalDecisionDiagram::load_data(const std::string& filename) {
         }
     } catch (std::invalid_argument& e) {
     }
-
 
     if (buffer.num_elements() > 0) {
         insert(buffer); 

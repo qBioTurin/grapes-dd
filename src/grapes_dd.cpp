@@ -163,7 +163,7 @@ int main(int argc, char** argv) {
         end_loading = std::chrono::_V2::steady_clock::now(); 
         stages_times.push_back(get_time_interval(end_loading, start_loading)); 
 
-        std::vector<GraphMatch> matched_graphs(mtmdd_index.match(query_file, stages_times)); 
+        std::vector<GraphMatch> matched_graphs(mtmdd_index.match(query_file, nthreads, stages_times)); 
         std::map<std::string, double> matching_stats;
 
         mtmdd::graph_find(graph_file,

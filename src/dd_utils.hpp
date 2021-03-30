@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define UTILS_HPP
 
 #include <iostream>
+#include <cstdio>
 #include <cstring>
 #include <chrono>
 #include <exception>
@@ -54,6 +55,49 @@ using time_point = std::chrono::_V2::steady_clock::time_point;
 inline double get_time_interval(time_point end_t, time_point start_t) {
     return std::chrono::duration_cast<std::chrono::duration<double>>(end_t - start_t).count(); 
 }
+
+
+class Parser {
+    const size_t buffersize = 256; 
+
+    std::string delimiters; 
+    char *buffer; 
+    bool state; 
+public:
+    inline Parser(const char* delimiters) : state(false) {
+        buffer = new char[buffersize];
+        set_delimiters(delimiters);
+    }
+
+    inline ~Parser() {
+        delete buffer; 
+    }
+
+    inline void set_string(const char *str) {
+        strncpy(this->buffer, str, buffersize);
+        this->state = false; 
+    }
+
+    inline void set_delimiters(const char* delimiters) {
+        this->delimiters.assign(delimiters); 
+    }
+
+    inline char* parse() {
+        char *ret = state ? strtok(NULL, delimiters.c_str()) : strtok(buffer, delimiters.c_str()); 
+        state = ret != NULL; 
+        return ret; 
+    }
+
+    inline int parseint() {
+        char* p = this->parse();
+
+        if (!p) 
+            throw std::invalid_argument("Invalid token"); 
+
+        return atoi(p); 
+    }
+};
+
 
 namespace mtmdd {
     class VariableOrdering; 
@@ -161,18 +205,16 @@ namespace mtmdd {
             dest[_order.back()] = graph_node_id; 
         }
 
-        // write the variable ordering in a previously opened file 
-        inline void write(FILE* fp) {
-            for (int i = 0; i < _bounds.size(); ++i) 
-                if (fprintf(fp, "%d %d\n", _bounds.at(i), _order.at(i)) != 2)
-                    ;
+        friend std::ostream& operator << (std::ostream& out, VariableOrdering& ordering) {
+            for (int i = 0; i < ordering._bounds.size(); ++i)
+                out << ordering._bounds.at(i) << " " << ordering._order.at(i) << "\n";
+            
+            return out; 
         }
 
-        // read the variable ordering froma previously opened file
-        inline void read(FILE* fp) {
+        inline void read(std::ifstream& in) {
             for (int i = 0; i < _bounds.size(); ++i) 
-                if (fscanf(fp, "%d %d\n", &_bounds[i], &_order[i]) != 2)
-                    ;
+                in >> _bounds.at(i) >> _order.at(i);
         }
 
         void show() {
@@ -184,33 +226,6 @@ namespace mtmdd {
         }
     }; 
 
-
-
-
-    struct StatsDD {
-        long num_vars = 0; //number of mtdd levels
-        long num_graphs = 0;  //number of indexed graphs
-        long num_labels = 0;  //number of labels
-        long num_nodes = 0; //current number of nodes 
-        long peak_nodes = 0; //peak number of nodes reached during mtdd building 
-        long memory_used = 0; //current memory required to store mtdd 
-        long peak_memory = 0;  //peak memory utilization reached during mtdd building
-        long num_edges = 0;  //current number of edges 
-        long num_unique_nodes = 0; //current number of unique nodes 
-        long cardinality = 0; //number of stored elements 
-
-        void show() {
-            std::cout << "##################\n"
-                << "num_vars = " << num_vars << "\n"
-                << "num_graphs = " << num_graphs << "\n"
-                << "num_labels = " << num_labels << "\n"
-                << "num_nodes = " << num_nodes << "  , peak = " << peak_nodes << "\n"
-                << "num unique nodes = " << num_unique_nodes << "\n"
-                << "num_edges = " << num_edges << "\n"
-                << "memory_used = " << memory_used << "  , peak = " << peak_memory << "\n"
-                << "cardinality = " << cardinality << std::endl; 
-        }
-    }; 
 
     /** GraphNodeEncoder maps graph nodes to a single numeric value */
     class GraphNodeEncoder : public std::map<graph_node_t, unsigned> {
@@ -239,7 +254,7 @@ namespace mtmdd {
             return inverse_mapping.at(vmapped); 
         }
 
-        //it maps one node of a specific graph to an integer value 
+        //it maps the node nid of graph gif into a unique integer value 
         inline unsigned map(graph_id_t gid, node_id_t nid) { 
             graph_node_t gn(gid, nid);
             base::iterator it = this->find(gn);
@@ -281,11 +296,62 @@ namespace mtmdd {
             return tot_nodes; 
         }
 
-        void build_inverse_mapping() {
+        inline void build_inverse_mapping() {
             inverse_mapping.resize(size() + 1); 
 
             for (auto it = begin(); it != end(); ++it)
                 inverse_mapping.at(it->second) = it->first;  
+        }
+
+        friend std::ostream& operator << (std::ostream& out, GraphNodeEncoder& enc) {
+            std::vector<graph_node_t> nodes(enc.size()); 
+            std::ostringstream my_text; 
+
+            for (const auto& entry: enc) 
+                nodes.at(entry.second - 1) = entry.first;
+            
+            std::vector<graph_node_t>::iterator 
+                it = nodes.begin(), end = nodes.end(); 
+
+            while (it != end) {
+                std::ostringstream buffer; 
+                int curr_graph_id = it->first; 
+
+                do { 
+                    buffer << it->second << " ";
+                } while (++it != end && curr_graph_id == it->first); 
+                //accumulate string of current graph's nodes
+                my_text << buffer.str() << "\n";
+            }
+            //write the total number of graphs N, then one line for each graph with the enumerated nodes 
+            out << enc.nodes_per_graph.size() << "\n"
+                << my_text.str();
+
+            return out; 
+        }
+
+        void read(std::ifstream& fi) {
+            std::stringstream ss; 
+            std::string line;
+
+            //read total number of graphs 
+            std::getline(fi, line); 
+            int num_graphs = std::stoi(line);
+
+            /* read one line for each graph. 
+             * The line describes the order in which graph's vertices have been enumerated */ 
+            for (int curr_g = 0; curr_g < num_graphs; ++curr_g) {
+                std::getline(fi, line);
+                ss.str(line); 
+                int node_id; 
+
+                while (ss >> node_id) 
+                    map(curr_g, node_id);
+                
+                ss.clear();
+            }
+
+            build_inverse_mapping();
         }
     };  
 
@@ -297,7 +363,7 @@ namespace mtmdd {
         mapStringToInt labelMapping; 
 
     public: 
-        Encoder() {}
+        inline Encoder() {}
 
         inline Encoder(GRAPESLib::LabelMap& grapesLabelMap) : Encoder() {
             initFromGrapesLabelMap(grapesLabelMap); 
@@ -329,7 +395,7 @@ namespace mtmdd {
         }
 
         inline int get(const std::string& key) {
-             auto it = labelMapping.find(key); 
+            auto it = labelMapping.find(key); 
             return it != labelMapping.end() ? it->second : 0;   
         }
 
@@ -358,49 +424,56 @@ namespace mtmdd {
                 std::cout << it->first << " => " << it->second << "; "; 
             std::cout << std::endl; 
         }
+
+        friend std::ostream& operator << (std::ostream& out, Encoder& enc) {
+            std::vector<std::string> labels(enc.size());
+            for (const auto& x: enc)
+                labels.at(x.second - 1).assign(x.first); 
+            for (const auto& x: labels)
+                out << x << "\n";
+            return out; 
+        }
+
+
+        void read(std::ifstream& fi, int nlabels) {
+            for (std::string label; nlabels > 0; --nlabels) {
+                getline(fi, label);
+
+                if (label.size() == 0) {
+                    ++nlabels;
+                    continue;
+                }
+                map(label);
+            }
+        }        
+    }; 
+
+
+    struct StatsDD {
+        long num_vars = 0; //number of mtdd levels
+        long num_graphs = 0;  //number of indexed graphs
+        long num_labels = 0;  //number of labels
+        long num_nodes = 0; //current number of nodes 
+        long peak_nodes = 0; //peak number of nodes reached during mtdd building 
+        long memory_used = 0; //current memory required to store mtdd 
+        long peak_memory = 0;  //peak memory utilization reached during mtdd building
+        long num_edges = 0;  //current number of edges 
+        long num_unique_nodes = 0; //current number of unique nodes 
+        long cardinality = 0; //number of stored elements 
+
+        void show() {
+            std::cout << "##################\n"
+                << "num_vars = " << num_vars << "\n"
+                << "num_graphs = " << num_graphs << "\n"
+                << "num_labels = " << num_labels << "\n"
+                << "num_nodes = " << num_nodes << "  , peak = " << peak_nodes << "\n"
+                << "num unique nodes = " << num_unique_nodes << "\n"
+                << "num_edges = " << num_edges << "\n"
+                << "memory_used = " << memory_used << "  , peak = " << peak_memory << "\n"
+                << "cardinality = " << cardinality << std::endl; 
+        }
     }; 
 }
 
-
-class Parser {
-    const size_t buffersize = 256; 
-
-    std::string delimiters; 
-    char *buffer; 
-    bool state; 
-public:
-    inline Parser(const char* delimiters) : state(false) {
-        buffer = new char[buffersize];
-        set_delimiters(delimiters);
-    }
-
-    inline ~Parser() {
-        delete buffer; 
-    }
-
-    inline void set_string(const char *str) {
-        strncpy(this->buffer, str, buffersize);
-        this->state = false; 
-    }
-
-    inline void set_delimiters(const char* delimiters) {
-        this->delimiters.assign(delimiters); 
-    }
-
-    inline char* parse() {
-        char *ret = state ? strtok(NULL, delimiters.c_str()) : strtok(buffer, delimiters.c_str()); 
-        state = ret != NULL; 
-        return ret; 
-    }
-
-    inline int parseint() {
-        char* p = this->parse();
-
-        if (!p) 
-            throw std::invalid_argument("Invalid token"); 
-
-        return atoi(p); 
-    }
-};
 
 #endif

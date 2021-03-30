@@ -139,7 +139,7 @@ namespace mtmdd {
         }
 
         //search all the occurrences of the query subgraph in the indexed graphs 
-        std::vector<GraphMatch> match(const std::string& query_graph_file, std::vector<double>& times); 
+        std::vector<GraphMatch> match(const std::string& query_graph_file, unsigned nthreads, std::vector<double>& times); 
 
         //it creates a pdf file representing the current mtdd - nb. it requires graphviz library! 
         void writePicture(const std::string& pdffile) const {
