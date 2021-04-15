@@ -46,6 +46,24 @@ using namespace mtmdd;
 
 
 
+GraphsDB::GraphsDB(const std::string& input_network_file, bool direct) : total_num_vertices(0) {
+    std::ifstream is(input_network_file.c_str(), std::ios::in); 
+    GRAPESLib::GraphReader_gff temp_greader(labelMap, is); 
+    temp_greader.direct = direct; 
+    bool keep_reading = true; 
+
+    //read graph database 
+    while (keep_reading) {
+        GRAPESLib::Graph g(graphs_queue.size()); 
+
+        if ((keep_reading = temp_greader.readGraph(g))) {
+            total_num_vertices += g.nodes_count; 
+            graphs_queue.push(g); 
+        }
+    }
+}
+
+
 MultiterminalDecisionDiagram::MultiterminalDecisionDiagram(const domain_bounds_t& bounds) 
 : MultiterminalDecisionDiagram() {
     init(bounds); 
@@ -105,9 +123,7 @@ void MultiterminalDecisionDiagram::load_from_graph_db(const GraphsDB& graphs_db)
 
 MultiterminalDecisionDiagram::MultiterminalDecisionDiagram(const std::string& input_network_file, unsigned max_depth, bool direct, size_t buffersize) 
 : MultiterminalDecisionDiagram() {
-    GraphsDB graphs_db;
-    grapes2dd::load_graph_db(input_network_file, graphs_db, direct); 
-
+    GraphsDB graphs_db(input_network_file, direct);
     init(graphs_db, max_depth);
 }
 
@@ -333,36 +349,6 @@ std::vector<GraphMatch> MultiterminalDecisionDiagram::match(const std::string& q
     query_matched.clear(); 
 
     return matched_graphs; 
-}
-
-
-void grapes2dd::load_graph_db(const std::string& input_network_file, GraphsDB& graphs_db, bool direct)  {
-    std::queue<GRAPESLib::Graph>& graphs_queue = graphs_db.graphs_queue; 
-    GRAPESLib::LabelMap& labelMap = graphs_db.labelMap; 
-
-    std::ifstream is(input_network_file.c_str(), std::ios::in); 
-    GRAPESLib::GraphReader_gff temp_greader(labelMap, is); 
-    temp_greader.direct = direct; 
-    bool keep_reading = true; 
-    unsigned total_num_vertices = 0; 
-
-    //read graph database 
-    while (keep_reading) {
-        GRAPESLib::Graph g(graphs_queue.size()); 
-
-        if ((keep_reading = temp_greader.readGraph(g))) {
-            total_num_vertices += g.nodes_count; 
-            graphs_queue.push(g); 
-        }
-    }
-
-    graphs_db.total_num_vertices = total_num_vertices; 
-
-    std::cout 
-    //    << "Input graph database: " << input_network_file << "\n"    
-        << "Number of graphs: " << graphs_queue.size() << "\n"
-        << "Num labels: " << labelMap.size() << "\n"
-        << "Total number of vertices: " << total_num_vertices << std::endl; 
 }
 
 

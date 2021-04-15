@@ -39,11 +39,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define NOP_LABEL 0 
 
 
-typedef struct {
+class GraphsDB;
+
+
+class GraphsDB {
+public:
     std::queue<GRAPESLib::Graph> graphs_queue;
     GRAPESLib::LabelMap labelMap;
     unsigned total_num_vertices;  
-} GraphsDB; 
+
+    GraphsDB(const std::string& input_network_file, bool direct); 
+};
+
 
 
 namespace mtmdd {
@@ -225,8 +232,6 @@ namespace grapes2dd {
 
         return pathlength; 
     }
-
-    void load_graph_db(const std::string& input_network_file, GraphsDB& graphs_db, bool direct); 
 }
 
 #endif
