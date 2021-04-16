@@ -16,13 +16,6 @@ entropy: entropy.o mtmdd.o matching.o
 entropy.o: entropy.cpp
 	$(CC) -c entropy.cpp $(INCLUDE_GRAPES) $(SETTINGS)
 
-
-vincenzo: vincenzo.o mtmdd.o matching.o
-	$(CC) -o vincenzo $^ $(LINK_GRAPES) $(SETTINGS)
-
-vincenzo.o: vincenzo.cpp
-	$(CC) -c vincenzo.cpp $(INCLUDE_GRAPES) $(SETTINGS)
-
 grapes_dd: grapes_dd.o mtmdd.o  matching.o
 	$(CC) -o $(NAME) $^ $(LINK_GRAPES) $(SETTINGS)
 

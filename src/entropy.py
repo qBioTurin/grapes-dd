@@ -30,7 +30,7 @@ class Ordify:
 
 
     def combine(self):
-        while len(self.unbounded) > 0:
+        while len(self.unbounded) > 1:
             h = list() 
 
             #combine each unbounded variable with partial ordered variables
@@ -53,6 +53,8 @@ class Ordify:
 
             logger.info(f"Current partial ordering: {self.order}")
 
+        self.order.append(self.unbounded[0])
+        self.unbounded.pop()
 
 
 
@@ -63,36 +65,27 @@ if __name__ == "__main__":
     parser.add_argument("--data", type=str, required=True)
     args = parser.parse_args() 
 
-
     df = pd.read_csv(args.data, sep="\t")
-    df = df.iloc[1:].drop(columns=["terminal", "v_4"])
+    df = df.iloc[1:].drop(columns=["terminal"])
 
-    print(df)
+    logger.info(f"Loading data completed. Data shape: {df.shape}")
 
+    col_id = max([int(col.replace("v_", "")) for col in df.columns if col.startswith("v_")])
+
+    df.drop(columns=[f"v_{col_id}"], inplace=True)
 
     ord = Ordify(df)
     ord.combine()
 
-    print(f"Best order: {ord.order}")
+    best_order = [v.replace("v_", "") for v in ord.order]
+    if "terminal" in best_order:
+        best_order.remove("terminal ")
+    best_order.append(str(col_id))
 
-    print(ord.df[ord.order].sort_values(by=ord.order))
-    
+    logger.info(f"Order found: {best_order}")
 
-    raise Exception("comprare le uova")
+    print(",".join(best_order))
 
+#    print(f"Best order: {ord.order}")
 
-    my_data = [
-        "ACFGT",
-        "CFGAT",
-        "CFGAC",
-        "CTGFG",
-        "VTGFT"
-    ]
-
-    ord = Ordify(my_data)
-    ord.combine() 
-
-
-    print(f"Best order: {ord.order}")
-
-    print(ord.df[ord.order].sort_values(by=ord.order))
+ #   print(ord.df[ord.order].sort_values(by=ord.order))
