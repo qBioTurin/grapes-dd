@@ -17,6 +17,11 @@ RUN wget https://github.com/asminer/meddly/archive/v0.15.0.tar.gz && \
     cd meddly-0.15.0 && \
     ./autogen.sh && ./configure CXXFLAGS="-O3" --without-gmp --prefix=/usr/local && make && make install 
 
+# RUN wget https://github.com/asminer/meddly/archive/refs/tags/v0.15.1.tar.gz && \
+#     tar xf v0.15.1.tar.gz && \ 
+#     cd meddly-0.15.1/ && \
+#     ./autogen.sh && ./configure CXXFLAGS="-O3" --without-gmp --prefix=/usr/local && make && make install 
+    
 #compile GRAPES 
 COPY src/GRAPES /opt/GRAPES
 WORKDIR /opt/GRAPES
