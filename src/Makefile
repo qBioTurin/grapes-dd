@@ -11,15 +11,24 @@ WARNS=-Wall -Wextra
 OPTIMIZE=-O3 -funroll-loops
 
 SETTINGS=$(OPTIMIZE) $(DEBUG)# $(WARNS)
+NAMES=$(NAME) entropy orders
 
-
-all: grapes_dd
+all: $(NAMES)
 
 entropy: entropy.o mtmdd.o matching.o
 	$(CC) -o entropy $^ $(LINKING) $(SETTINGS)
 
 entropy.o: entropy.cpp
 	$(CC) -c entropy.cpp $(INCLUDES) $(SETTINGS)
+
+
+orders: orders.o mtmdd.o matching.o
+	$(CC) -o orders $^ $(LINKING) $(SETTINGS)
+
+orders.o: orders.cpp
+	$(CC) -c orders.cpp $(INCLUDES) $(SETTINGS)
+
+
 
 grapes_dd: grapes_dd.o mtmdd.o  matching.o
 	$(CC) -o $(NAME) $^ $(LINKING) $(SETTINGS)
@@ -37,4 +46,4 @@ clean:
 	rm -f *.o *.gch
 
 clean_all:
-	rm -f *.o *.gch *.pdf *.dot
+	rm -f $(NAMES) *.o *.gch *.pdf *.dot
