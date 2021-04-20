@@ -1,26 +1,37 @@
 CC=g++
 NAME=grapes_dd
+
+INCLUDES=-I./GRAPES/vflib2/include -I./GRAPES/RILib -I./GRAPES/GRAPESLib -I./GRAPES/GRAPESLib/data -I./GRAPES/GRAPESLib/pp
+INCLUDES += -I./meddly/include
+LINKING=-L./GRAPES/vflib2/lib -lvf -lstdc++ -lm 
+LINKING += meddly/lib/libmeddly.a -pthread
+
 WARNS=-Wall -Wextra
-LIBS=-lmeddly -pthread 
 #DEBUG=-g -ggdb
 OPTIMIZE=-O3 -funroll-loops
-LINK_GRAPES=-L./GRAPES/vflib2/lib -lvf -lstdc++ -lm $(LIBS)
-INCLUDE_GRAPES=-I./GRAPES/vflib2/include -I./GRAPES/RILib -I./GRAPES/GRAPESLib -I./GRAPES/GRAPESLib/data -I./GRAPES/GRAPESLib/pp
-SETTINGS=$(OPTIMIZE) $(DEBUG) # $(WARNS)
+
+SETTINGS=$(OPTIMIZE) $(DEBUG)# $(WARNS)
+
 
 all: grapes_dd
 
+entropy: entropy.o mtmdd.o matching.o
+	$(CC) -o entropy $^ $(LINKING) $(SETTINGS)
+
+entropy.o: entropy.cpp
+	$(CC) -c entropy.cpp $(INCLUDES) $(SETTINGS)
+
 grapes_dd: grapes_dd.o mtmdd.o  matching.o
-	$(CC) -o $(NAME) $^ $(LINK_GRAPES) $(SETTINGS)
+	$(CC) -o $(NAME) $^ $(LINKING) $(SETTINGS)
 
 grapes_dd.o: grapes_dd.cpp 
-	$(CC) -c grapes_dd.cpp $(INCLUDE_GRAPES) $(SETTINGS)
+	$(CC) -c grapes_dd.cpp $(INCLUDES) $(SETTINGS)
 
 mtmdd.o: mtmdd.cpp mtmdd.hpp buffer.hpp 
-	$(CC) -c mtmdd.cpp $(INCLUDE_GRAPES) $(SETTINGS)
+	$(CC) -c mtmdd.cpp $(INCLUDES) $(SETTINGS)
 
 matching.o: matching.cpp matching.hpp buffer.hpp
-	$(CC) -c matching.cpp $(INCLUDE_GRAPES) $(SETTINGS)
+	$(CC) -c matching.cpp $(INCLUDES) $(SETTINGS)
 
 clean: 
 	rm -f *.o *.gch

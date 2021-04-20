@@ -1,0 +1,6 @@
+operations/mpz_object.lo: operations/mpz_object.cc \
+ /usr/include/stdc-predef.h ../config.h
+
+/usr/include/stdc-predef.h:
+
+../config.h:
