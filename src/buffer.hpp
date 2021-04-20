@@ -33,14 +33,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /** Buffer for the data of a single graph. */
 class Buffer : private std::vector<int*> { 
     using base = std::vector<int*>; 
+    using value_vector = std::vector<long>;
 
     //iterator to the current buffer 
     Buffer::iterator current; 
     
     //container for output values 
-    std::vector<int> values; 
+  //  std::vector<long> values; 
+    value_vector values; 
+    value_vector::iterator current_value; 
     //iterator to the current element 
-    std::vector<int>::iterator current_value; 
+//    std::vector<int>::iterator current_value; 
     //enable the use of values vector 
     const bool enable_values; 
 
@@ -76,13 +79,13 @@ public:
     inline Buffer::base::iterator begin() { return base::begin(); }
     inline Buffer::base::iterator end() { return base::end(); }
 
-    inline void save_value(const int v);
+    inline void save_value(const long v);
 
     inline int** data() { return base::data(); }
 
     inline size_t size() { return base::size(); }
 
-    inline int* values_data() {
+    inline long* values_data() {
         return enable_values ? values.data() : nullptr; 
     }
 
@@ -150,7 +153,7 @@ inline Buffer::buffer_slot_t Buffer::push_slot() {
     return ret;
 }
 
-inline void Buffer::save_value(const int v) {
+inline void Buffer::save_value(const long v) {
     if (enable_values) {
         *current_value = v; 
 

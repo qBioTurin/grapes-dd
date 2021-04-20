@@ -9,36 +9,12 @@ RUN apt update && \
         make \
         time 
 
-#download and compile Meddly Library v0.15.0
-RUN mkdir /opt/Meddly
-WORKDIR /opt/Meddly
-RUN wget https://github.com/asminer/meddly/archive/v0.15.0.tar.gz && \
-    tar xf v0.15.0.tar.gz  && \
-    cd meddly-0.15.0 && \
-    ./autogen.sh && ./configure CXXFLAGS="-O3" --without-gmp --prefix=/usr/local && make && make install 
-
-# RUN wget https://github.com/asminer/meddly/archive/refs/tags/v0.15.1.tar.gz && \
-#     tar xf v0.15.1.tar.gz && \ 
-#     cd meddly-0.15.1/ && \
-#     ./autogen.sh && ./configure CXXFLAGS="-O3" --without-gmp --prefix=/usr/local && make && make install 
-    
-#compile GRAPES 
+COPY build_all.sh /opt/
 COPY src/GRAPES /opt/GRAPES
-WORKDIR /opt/GRAPES
-RUN make -B && make grapes && mv grapes /usr/local/bin/
+COPY src/meddly /opt/meddly 
+COPY src/ /opt/src/
 
+RUN cd /opt/ && ./build_all.sh 
 
-#compile GRAPES-DD
-COPY src/*.cpp src/*.hpp src/Makefile /opt/indexing/
-COPY docker/* /opt/
-WORKDIR /opt/indexing
-RUN ln -s /opt/GRAPES /opt/indexing/GRAPES && \
-    make grapes_dd && \ 
-    mv grapes_dd /usr/local/bin/ && \
-    cd .. && g++ -o mdd4grapes mdd4grapes.cpp && \
-    mv mdd4grapes /usr/local/bin/ && \
-    mv start.sh /usr/local/bin/
+ENTRYPOINT [ "/opt/src/grapes_dd" ]
 
-WORKDIR /
-
-ENTRYPOINT [ "/usr/local/bin/start.sh" ]

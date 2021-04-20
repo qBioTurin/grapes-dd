@@ -118,7 +118,8 @@ void mtmdd::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
 
                 for (const LabelledPath* query_path: paths_from_query_node) {
                     int* buffer_entry = query_path->get_pointer2buffer(); 
-                    int query_n_occ = query_path->get_occurrence_number(), vertex_n_occ; 
+                    int query_n_occ = query_path->get_occurrence_number();
+                    long vertex_n_occ; 
 
                     buffer_entry[node_encoded_index] = current_node_encoded_id;  
                     forest->evaluate(qmatches, buffer_entry, vertex_n_occ); 
