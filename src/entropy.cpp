@@ -151,6 +151,7 @@ size_t get_filesize(const std::string& filename);
 std::string format(long a, long b); 
 
 size_t build_dd(
+        mtmdd::MultiterminalDecisionDiagram& dd,
         const std::string& db_filename, 
         const GraphsDB& db, 
         unsigned max_depth, 
@@ -217,23 +218,31 @@ int main(int argc, char** argv) {
 
         for (const auto& x: variables)  std::cout << x << " ";
 
-
+        mtmdd::MultiterminalDecisionDiagram dd_default, dd_order; 
         mtmdd::StatsDD stats_default, stats_order;
 
         std::cout << "\nBuilding DD with default variable ordering..." << std::endl; 
-        size_t size_default = build_dd(graph_file, db, max_depth, stats_default);
+        size_t size_default = build_dd(dd_default, graph_file, db, max_depth, stats_default);
 
-        std::cout << "Building DD with custom variable ordering..." << std::endl; 
-        size_t size_custom = build_dd(graph_file, db, max_depth, stats_order);  
+        // std::cout << "Building DD with custom variable ordering..." << std::endl; 
+        // size_t size_custom = build_dd(dd_order, graph_file, db, max_depth, stats_order);  
 
-        std::cout << 
-            "Num nodes: " << format(stats_order.num_nodes, stats_default.num_nodes) <<
-            "Peak nodes: " << format(stats_order.peak_nodes, stats_default.peak_nodes) <<
-            "Num edges: " << format(stats_order.num_edges, stats_default.num_edges) <<
-            "Memory used: " << format(stats_order.memory_used, stats_default.memory_used) <<
-            "Peak memory: " << format(stats_order.peak_memory, stats_default.peak_memory) <<
-            "Index size: " << format(size_custom, size_default) << 
-            "Cardinality: " << format(stats_order.cardinality, stats_default.cardinality) << std::endl; 
+        // std::cout << 
+        //     "Num nodes: " << format(stats_order.num_nodes, stats_default.num_nodes) <<
+        //     "Peak nodes: " << format(stats_order.peak_nodes, stats_default.peak_nodes) <<
+        //     "Num edges: " << format(stats_order.num_edges, stats_default.num_edges) <<
+        //     "Memory used: " << format(stats_order.memory_used, stats_default.memory_used) <<
+        //     "Peak memory: " << format(stats_order.peak_memory, stats_default.peak_memory) <<
+        //     "Index size: " << format(size_custom, size_default) << 
+        //     "Cardinality: " << format(stats_order.cardinality, stats_default.cardinality) << std::endl; 
+        
+
+
+        std::cout << "Trying to dinamically change variable ordering..." << std::endl;
+        dd_default.change_order(); 
+        // std::cout << "Same stuff " << std::endl;
+        // dd_order.change_order();
+        
 
     } else {
         heuristic(db, max_depth); 
@@ -355,13 +364,13 @@ std::string format(long a, long b) {
 }
 
 size_t build_dd(
+        mtmdd::MultiterminalDecisionDiagram& dd,
         const std::string& db_filename, 
         const GraphsDB& db, 
         unsigned max_depth, 
         mtmdd::StatsDD& stats, 
         const mtmdd::var_order_t& variables) {
 
-    mtmdd::MultiterminalDecisionDiagram dd;
     dd.init(db, max_depth, variables); 
     dd.write(db_filename); 
 

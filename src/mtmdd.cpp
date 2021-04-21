@@ -39,7 +39,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphVisit.h"
 #include "BuildRunner.h"
 
-
+#include <algorithm>
+#include <random>
 
 using namespace mtmdd; 
 
@@ -391,7 +392,7 @@ void MultiterminalDecisionDiagram::load_data(const std::string& filename) {
     parser.set_string(line.c_str()); 
     try {
         char *p; 
-        while (p = parser.parse()) 
+        while ((p = parser.parse())) 
             order.push_back(std::stoi(std::string(p+2)));
     } catch (std::exception& e) {}
 
@@ -430,4 +431,93 @@ void MultiterminalDecisionDiagram::load_data(const std::string& filename) {
     if (buffer.num_elements() > 0) {
         insert(buffer); 
     }
+}
+
+void MultiterminalDecisionDiagram::impose_order(const var_order_t& var_order) {
+    MEDDLY::expert_forest* expf = static_cast<MEDDLY::expert_forest*>(forest); 
+    std::vector<int> pippo(this->v_order->size() + 1);
+
+    expf->getVariableOrder(pippo.data());
+
+    std::stringstream result;
+    std::copy(pippo.begin(), pippo.end(), std::ostream_iterator<int>(result, " "));
+
+
+    std::cout << "Current order: "  << result.str();
+
+    std::stringstream ss; 
+    std::copy(var_order.begin(), var_order.end(), std::ostream_iterator<int>(ss, " ")); 
+
+    std::cout << "Desired order: " << ss.str() << std::endl;
+
+    expf->reorderVariables(var_order.data()); 
+}
+
+
+void MultiterminalDecisionDiagram::change_order() {
+    MEDDLY::expert_forest* exf = static_cast<MEDDLY::expert_forest*>(forest); 
+    exf->removeAllComputeTableEntries(); 
+    int nVariables = forest->getDomain()->getNumVariables(); 
+
+    std::vector<int> order_origin(nVariables + 1); 
+    exf->getVariableOrder(order_origin.data());
+
+    std::cout << "Current ordering:"; 
+    for (const int& curr: order_origin)
+        std::cout << curr << " "; 
+    std::cout << std::endl; 
+
+/*
+    std::vector<int> curr_order(order_origin), best_order;
+    int min_num_nodes = forest->getCurrentNumNodes(); 
+    int n = 0; 
+
+    std::random_shuffle(curr_order.begin() + 1, curr_order.end()); 
+    
+
+    
+    do {
+        exf->reorderVariables(curr_order.data());
+        if (forest->getCurrentNumNodes() < min_num_nodes) {
+            min_num_nodes = forest->getCurrentNumNodes(); 
+            best_order = curr_order; 
+
+            writePicture("best_" + std::to_string(n++));             
+        }
+    } while (std::next_permutation(curr_order.begin() + 1, curr_order.end()));  */
+
+    std::vector<int> my_order(nVariables + 1); 
+
+    //view current dd 
+    writePicture("pdf/initial"); 
+
+    exf->swapAdjacentVariables(4); 
+
+    writePicture("pdf/switched");
+
+
+    //swap top level and view resulting dd 
+
+
+/***
+    for (int i = 1; i <= nVariables; ++i) {
+        writePicture("pdf/state_" + std::to_string(i)); 
+
+        exf->getVariableOrder(my_order.data()); 
+
+        std::cout << "Current ordering:"; 
+        for (const int& curr: my_order)
+            std::cout << curr << " "; 
+        std::cout << std::endl; 
+
+        std::cout << "i = " << i << std::endl;
+
+        exf->swapAdjacentVariables(i); 
+    }
+
+    writePicture("pdf/final_state"); 
+    std::cout << "Current ordering:"; 
+    for (const int& curr: order_origin)
+        std::cout << curr << " "; 
+    std::cout << std::endl;  ***/
 }

@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <unordered_map>
 #include <meddly.h>
+#include <meddly_expert.h>
 
 #include "matching.hpp"
 #include "buffer.hpp"
@@ -144,6 +145,11 @@ namespace mtmdd {
                 throw MEDDLY::error(e); 
             }
         }
+
+
+        void change_order();
+
+        void impose_order(const var_order_t& var_order); 
 
         //search all the occurrences of the query subgraph in the indexed graphs 
         std::vector<GraphMatch> match(const std::string& query_graph_file, unsigned nthreads, std::vector<double>& times); 
