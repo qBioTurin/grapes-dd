@@ -156,7 +156,7 @@ int main(int argc, char** argv) {
             << "Input database: " << graph_file << "\n"
             << "Input query graph: " << query_file << "\n"
             << "Number of threads: " << nthreads << "\n"
-            << "MAX LP depth: " << max_depth << "\n";
+            << "MAX LP depth: " << max_depth << std::endl;
 
         start_loading = std::chrono::_V2::steady_clock::now(); 
         mtmdd_index.read(graph_file, max_depth); 
@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
         stages_times.push_back(total_time); 
 
         std::cout 
-            << "Number of graphs inside the database: " << mtmdd_index.num_graphs_in_db << "\n"
+            << "Number of graphs inside the database: " << mtmdd_index.num_indexed_graphs() << "\n"
             << "Number of candidate graphs: " << matching_stats["n_cand_graphs"] << "\n"
             << "Number of connected components by filtering: "<< matching_stats["n_cocos"] << "\n"
             << "Number of matching graphs: "<< matching_stats["n_matching_g"] <<"\n"

@@ -60,20 +60,22 @@ void mtmdd::QueryPattern::add_path_to_node(int current_node, const LabelledPath&
 
 
 void mtmdd::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatch>& final_matches) {
-    MEDDLY::forest* forest = query.query_dd->getForest(); 
+    MEDDLY::expert_forest* forest = static_cast<MEDDLY::expert_forest*>(query.query_dd->getForest());
     MEDDLY::dd_edge& dd_query = *(query.query_dd); 
-    const var_order_t& var_order = var_ordering.var_order(); 
-    const unsigned query_num_nodes = query.get_num_nodes(); 
-    const int node_encoded_index = var_order.back() + 1;  
-
+    const var_order_t& var_order = var_ordering.var_order; 
+    const int query_num_nodes = query.get_num_nodes(),
+              node_index_default = forest->getDomain()->getNumVariables(),
+              node_index_in_order = forest->getLevelByVar(node_index_default);
     std::map<int, GraphMatch> matched_graphs; //maps from graph id to the list of its matchable vertices 
+    MEDDLY::enumerator e(qmatches); //iterator over matched query dd 
 
-    MEDDLY::enumerator e(qmatches); 
+    long vertex_n_occ; //variable that will be used as result in forest->evaluate
+
     while (e) {
         //obtain current node from pruned mtmdd 
-        const int current_node_encoded_id = e.getAssignments()[node_encoded_index];   
+        const int current_node_encoded_id = e.getAssignments()[node_index_in_order];   
         int current_graph, current_node;  
-        
+
         std::tie(current_graph, current_node) = gn_enc.inverse_map(current_node_encoded_id); 
 
         //obtain current graph to match 
@@ -89,28 +91,25 @@ void mtmdd::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
         std::map<int, int> node_support; 
 
         do {
-            //get starting path from the current node in the pruned mtmdd
-            const int *current_dd_path = e.getAssignments(); 
-            
             //get query nodes from which the current path starts
-            const LabelledPath& current_path = *(query.unique_paths.find(LabelledPath(current_dd_path + 1, var_order)));
+            const LabelledPath& current_path = *(query.unique_paths.find(
+                LabelledPath(e.getAssignments() + 1, var_order))); //+1 to skip the first position since it is unused
             const std::set<int>& candidate_query_nodes(query.find_starting_nodes(current_path));
 
             //update node support using candidate query nodes 
-            for (std::set<int>::const_iterator it = candidate_query_nodes.begin(); it != candidate_query_nodes.end(); ++it) {
-                std::pair<std::map<int, int>::iterator, bool> it_map = node_support.emplace(*it, 1); 
+            for (const int& x: candidate_query_nodes) {
+                std::pair<std::map<int, int>::iterator, bool> it_map = node_support.emplace(x, 1); 
                 if (!it_map.second)
                     ++(it_map.first->second); 
             }
             ++e;
-        } while (e && e.getAssignments()[node_encoded_index] == current_node_encoded_id);
+        } while (e && e.getAssignments()[node_index_in_order] == current_node_encoded_id);
 
-        for (auto it = node_support.begin(); it != node_support.end(); ++it) {
-            int current_query_node = it->first; 
+        for (const std::pair<int, int>&& support_entry: node_support) {
+            int current_query_node = support_entry.first; 
             const std::vector<const LabelledPath*>& paths_from_query_node(query.find_starting_paths(current_query_node)); 
-             
 
-            if (it->second >= paths_from_query_node.size()) {
+            if (support_entry.second >= paths_from_query_node.size()) {
                 //for each path starting from the current query node, we have to check
                 //1. if the path also starts from the matched vertex
                 //2. if the occurrence number of the matched vertex is NOT LESS than the occurrence number of the query 
@@ -119,9 +118,8 @@ void mtmdd::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
                 for (const LabelledPath* query_path: paths_from_query_node) {
                     int* buffer_entry = query_path->get_pointer2buffer(); 
                     int query_n_occ = query_path->get_occurrence_number();
-                    long vertex_n_occ; 
 
-                    buffer_entry[node_encoded_index] = current_node_encoded_id;  
+                    buffer_entry[node_index_default] = current_node_encoded_id;  
                     forest->evaluate(qmatches, buffer_entry, vertex_n_occ); 
 
                     if (vertex_n_occ / query_n_occ < query_n_occ) {
@@ -136,7 +134,6 @@ void mtmdd::MatchedQuery::match(MEDDLY::dd_edge& qmatches, std::vector<GraphMatc
             }  
         }
     }
-
 
     for (auto x = matched_graphs.begin(); x != matched_graphs.end(); ++x)
         if (x->second.is_complete_match()) {
@@ -153,8 +150,6 @@ void mtmdd::GraphMatch::get_node_cands(GRAPESLib::node_cands_t& ncands) const {
 
         for (auto it_q = it->begin(); it_q != it->end(); ++it_q) 
             s.set(*it_q, true); 
-        
-//        std::cout << "target #" << graph_id << ", q_node #" << q_index << " ==> " << s.count_ones() << std::endl; 
 
         ncands.emplace(
             std::piecewise_construct, 
@@ -183,19 +178,17 @@ void mtmdd::graph_find(
     GRAPESLib::filtering_graph_set_t fgset; //set containing the ids of candidate graphs 
     GRAPESLib::graph_node_cands_t gncands; //maps containing a lot of useful stuff 
 
-    for (auto it = matched_vertices.begin(); it != matched_vertices.end(); ++it) {
+    for (const GraphMatch& gmatch: matched_vertices) {
         GRAPESLib::node_cands_t q_nodes;
         //adding information about nodes of the target graph matching query nodes         
-        it->get_node_cands(q_nodes); 
-
+        gmatch.get_node_cands(q_nodes); 
         gncands.emplace(
             std::piecewise_construct, 
-            std::forward_as_tuple(it->graph_id), 
+            std::forward_as_tuple(gmatch.graph_id),  
             std::forward_as_tuple(q_nodes)
         );
-
         //adding candidate graph id 
-        fgset.insert(it->graph_id);
+        fgset.insert(gmatch.graph_id);
     }
 
     // load graph collection 
@@ -277,7 +270,5 @@ void mtmdd::graph_find(
     match_stats.insert(std::pair<std::string, double>("n_cand_graphs", candidates.size())); 
     match_stats.insert(std::pair<std::string, double>("n_cocos", nof_cocos)); 
     match_stats.insert(std::pair<std::string, double>("n_matching_g", matching_graphs.size())); 
-    match_stats.insert(std::pair<std::string, double>("n_found_m", nof_matches)); 
-    
-    
+    match_stats.insert(std::pair<std::string, double>("n_found_m", nof_matches));     
 }

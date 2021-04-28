@@ -29,59 +29,53 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <vector>
 
+#include "dd_utils.hpp"
+
+
+using int_vector = std::vector<int>;
 
 /** Buffer for the data of a single graph. */
-class Buffer : private std::vector<int*> { 
-    using base = std::vector<int*>; 
+class Buffer : private std::vector<int_vector> { 
+    using base = std::vector<int_vector>; 
     using value_vector = std::vector<long>;
 
     //iterator to the current buffer 
     Buffer::iterator current; 
     
     //container for output values 
-  //  std::vector<long> values; 
     value_vector values; 
+    //iterator to the current return value 
     value_vector::iterator current_value; 
-    //iterator to the current element 
-//    std::vector<int>::iterator current_value; 
     //enable the use of values vector 
     const bool enable_values; 
 
     size_t num_current_elements; 
 
-    inline int* allocate() {
-        return new int[element_size]; 
-    }
+    std::vector<int*> pbuffer; 
 
 public: 
-    using buffer_slot_t = std::pair<int*, bool>; 
     //size of an internal buffer 
     const size_t element_size; 
 
-    inline Buffer(size_t elem_size, bool set_values = true); 
-
-    inline Buffer(size_t buffersize, size_t elem_size, bool set_values=true);
-
-    inline ~Buffer() {
-        for (auto it = begin(); it != end(); ++it)
-            delete[] *it; 
-    }
+    //constructor for empty buffer
+    inline Buffer(size_t elem_size, bool set_values); 
+    //constructor for buffer of buffersize elements 
+    inline Buffer(size_t buffersize, size_t elem_size, bool set_values);
 
     inline void flush();
 
     /** Return a pair containing a pointer to the next element available of the buffer.
      * and a flag setted to true if there are other elements avaiable, false otherwise. */
-    inline buffer_slot_t get_slot();
+    inline bool get_slot(int_vector*& slot);
 
-    inline buffer_slot_t push_slot(int value); 
-    inline buffer_slot_t push_slot(); 
+    inline int_vector& push_slot(int value);
 
     inline Buffer::base::iterator begin() { return base::begin(); }
     inline Buffer::base::iterator end() { return base::end(); }
 
     inline void save_value(const long v);
 
-    inline int** data() { return base::data(); }
+    inline int** data() { return pbuffer.data(); }
 
     inline size_t size() { return base::size(); }
 
@@ -93,21 +87,19 @@ public:
         return num_current_elements;
     }
 
-    inline void show_content(); 
+    inline void show_content() const; 
 }; 
 
 
-Buffer::Buffer(size_t elem_size, bool set_values) :
-enable_values(set_values), 
-num_current_elements(0), 
-element_size(elem_size) {
-    current = begin(); 
+Buffer::Buffer(size_t elem_size, bool set_values)
+    :   enable_values(set_values),  
+        num_current_elements(0), 
+        element_size(elem_size) {
 }
 
-Buffer::Buffer(size_t buffersize, size_t elem_size, bool set_values) :
-enable_values(set_values), 
-num_current_elements(0), 
-element_size(elem_size) {
+Buffer::Buffer(size_t buffersize, size_t elem_size, bool set_values) 
+    : Buffer(elem_size, set_values) {
+
     resize(buffersize); 
 
     if (enable_values) {
@@ -115,8 +107,10 @@ element_size(elem_size) {
         current_value = values.begin();
     } 
 
-    for (auto it = begin(); it != end(); ++it)
-        *it = allocate(); 
+    for (auto it = begin(); it != end(); ++it) {
+        it->resize(element_size); 
+        pbuffer.push_back(it->data());
+    }
 
     current = begin();  
 }
@@ -130,27 +124,27 @@ inline void Buffer::flush() {
         current_value = values.begin(); 
 }
 
-inline Buffer::buffer_slot_t Buffer::get_slot() {
-    buffer_slot_t ret(*current, false); 
-    ++num_current_elements;
-
-    if ((ret.second = ++current != end()) == false)
-        current = begin(); 
-
-    return ret; 
-}
-
-inline Buffer::buffer_slot_t Buffer::push_slot(int value) {
-    buffer_slot_t ret(this->push_slot()); 
-    values.push_back(value);
-    return ret; 
-}
-
-inline Buffer::buffer_slot_t Buffer::push_slot() {
-    buffer_slot_t ret(allocate(), false); 
-    base::push_back(ret.first); 
+inline bool Buffer::get_slot(int_vector*& slot) {
+    slot = std::addressof(*current);
     ++num_current_elements; 
-    return ret;
+
+    if (++current == end()) {
+        current = begin(); 
+        return false; 
+    }
+
+    return true; 
+}
+
+
+inline int_vector& Buffer::push_slot(int value) {
+    //append a new int_vector of length=element_size to the buffer
+    emplace_back(element_size);
+    int_vector& last_vector = back(); 
+    pbuffer.push_back(last_vector.data()); 
+    values.push_back(value); 
+    ++num_current_elements; 
+    return last_vector; 
 }
 
 inline void Buffer::save_value(const long v) {
@@ -162,15 +156,14 @@ inline void Buffer::save_value(const long v) {
     }
 }
 
-inline void Buffer::show_content() {
-    std::cout << "Buffer has " << num_elements() << " elements\n";
+inline void Buffer::show_content() const {
     for (int i = 0; i < num_current_elements; ++i) {
-        int *p = at(i); 
-        for (int j = 0; j < element_size; ++j) {
-            std::cout << p[j] << " "; 
-        }
-        std::cout << " ==> " << values.at(i) << "\n";
+        // const int_vector& v = at(i); 
+
+        for (int val: at(i))
+            std::cout << val << " ";
+        std::cout << "  ==> " << values.at(i) << "\n"; 
     }
-    std::cout << std::endl;
+    std::cout << std::endl; 
 }
 #endif

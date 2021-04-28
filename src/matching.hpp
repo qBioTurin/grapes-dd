@@ -56,19 +56,27 @@ namespace mtmdd {
     public:
         inline LabelledPath() : base() {}
 
-        inline LabelledPath(const int* vpath, const var_order_t& var_ordering)
-        : base(var_ordering.size() - 1) {
-            int index = 0; 
+        inline LabelledPath(const int* vpath, const int plength) 
+        : base(vpath, vpath + plength), buffer_location(nullptr)  {
+        }
 
-            for (auto it = begin(); it != end(); ++it, ++index) 
-                *it = vpath[var_ordering[index]]; 
+        inline LabelledPath(const int* vpath, const var_order_t& ordering)
+        : base(ordering.size() - 2), buffer_location(nullptr) {
+            const int max_index = size();
+            //skip ordering[0] 'cause it's empty 
+            for (int i = 1; i < ordering.size(); ++i) {
+                int var_pos = ordering.at(i) - 1; 
+                
+                if (var_pos < max_index)
+                    at(var_pos) = vpath[i - 1];
+            }
         }
 
         inline LabelledPath(const base& path) 
-            : base(path), buffer_location(nullptr) {} 
+        : base(path), buffer_location(nullptr) {} 
 
         inline LabelledPath(const LabelledPath& labelPath) 
-            : base(labelPath), buffer_location(labelPath.buffer_location), occurrence_number(labelPath.occurrence_number) {}
+        : base(labelPath), buffer_location(labelPath.buffer_location), occurrence_number(labelPath.occurrence_number) {}
 
         inline void assign_pointer2buffer(int* buffer_slot) {
             if (buffer_location == nullptr) {
@@ -91,7 +99,7 @@ namespace mtmdd {
         inline void print() const {
             for (auto it = begin(); it != end(); ++it)
                 std::cout << *it << " "; 
-            std::cout << std::endl; 
+            std::cout << " ==>  " << occurrence_number << std::endl; 
         }
     }; 
 
@@ -150,6 +158,12 @@ namespace mtmdd {
                 }
             }
         } 
+
+
+        void show_unique_paths() const {
+            for (const auto& path: unique_paths)
+                path.print(); 
+        }
     };
 
     class MatchedQuery {

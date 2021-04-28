@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <iostream>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <chrono>
 #include <exception>
@@ -38,7 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <sstream>
 
 
-#include <meddly.h>
+#include <meddly.h>      
 #include <meddly_expert.h>
 
 #include "LabelMap.h"
@@ -55,6 +56,7 @@ using time_point = std::chrono::_V2::steady_clock::time_point;
 inline double get_time_interval(time_point end_t, time_point start_t) {
     return std::chrono::duration_cast<std::chrono::duration<double>>(end_t - start_t).count(); 
 }
+
 
 
 class Parser {
@@ -118,8 +120,11 @@ namespace mtmdd {
     //vector of integers used to initialize the domain of mtmdd's levels
     using domain_bounds_t = std::vector<int>;
 
-    //vector of integers used to define variable ordering to impose to MTMDD levels
     using var_order_t = std::vector<int>; 
+
+    //vector of integers used to define variable ordering to impose to MTMDD levels
+    // using var_order_t = std::vector<int>; 
+    using variable_vec_t = std::vector<MEDDLY::variable*>;
 
     //vector of strings used to perform path queries on MDDs 
     using label_path_t = std::vector<std::string>; 
@@ -132,99 +137,119 @@ namespace mtmdd {
 
 
     class VariableOrdering {
+    public:
         // the i-th value is the domain of the i-th variable 
-        domain_bounds_t _bounds; 
+        domain_bounds_t bounds; 
         // the i-th value is the desired position of the i-th variable in the order 
-        var_order_t _order; 
+        var_order_t var_order;  
 
-        MEDDLY::domain *_domain = nullptr; 
+        MEDDLY::domain *domain = nullptr; 
+    private:
+        MEDDLY::expert_forest *forest = nullptr; 
+        MEDDLY::variable **vars = nullptr;
 
         inline void init_meddly_domain() {
-            _domain = MEDDLY::createDomainBottomUp(_bounds.data(), _bounds.size());
+            const int num_vars = bounds.size(), num_labels = bounds.front(), num_vertices = bounds.back(); 
+            vars = (MEDDLY::variable**) malloc((1+num_vars) * sizeof(void*));
+            
+            vars[0] = nullptr; 
+            vars[num_vars] = MEDDLY::createVariable(num_vertices, nullptr); 
+            
+            for (int i = num_vars - 1; i > 0; --i) 
+                vars[i] = MEDDLY::createVariable(num_labels, nullptr); 
+
+            domain = MEDDLY::createDomain(vars, num_vars);
+            
+            if (var_order.empty()) {
+                //save default variable ordering 
+                var_order.resize(num_vars + 1); 
+                std::iota(var_order.begin(), var_order.end(), 0); 
+            }
+
+            /* verbose 
+            MEDDLY::FILE_output meddlyout(stdout); 
+            domain->showInfo(meddlyout); */
         }
     public:
         //initialize a variable ordering object of n variables (bounds and order are not given)
-        inline VariableOrdering(unsigned n_variables) {
-            _bounds.resize(n_variables); 
-            _order.resize(n_variables); 
+        inline VariableOrdering(unsigned n_variables) : bounds(n_variables) {
         }
 
         //copy constructor
         inline VariableOrdering(const VariableOrdering& vo) 
-        : _bounds(vo._bounds), _order(vo._order) {
-            init_meddly_domain(); 
+        : bounds(vo.bounds), var_order(vo.var_order) {
+            init_meddly_domain();
         } 
 
         /* initialize a default variable ordering given the domain of the variables; 
          * bounds[i] is the domain of i-th variable */
-        inline VariableOrdering(const domain_bounds_t& bounds) : _bounds(bounds) {
-            //no order is provided, then the default one is chosen : 0, 1, 2, ... 
-            _order.resize(_bounds.size()); 
-            std::iota(_order.begin(), _order.end(), 0); 
+        inline VariableOrdering(const domain_bounds_t& bounds) : bounds(bounds) {
             init_meddly_domain(); 
+        } 
+
+        ~VariableOrdering() { 
+            MEDDLY::destroyDomain(domain); 
         }
 
-        /* */
-        inline VariableOrdering(const domain_bounds_t& bounds, const var_order_t& var_order, bool reorder = true)
-        : _bounds(bounds), _order(var_order) {
-            if (var_order.size() != bounds.size())
-                throw std::runtime_error("Bounds and var_order arrays have different sizes.");
+        inline void set_forest(MEDDLY::forest* forest) {
+            this->forest = static_cast<MEDDLY::expert_forest*>(forest);
+            impose_variable_ordering();  
+        }
 
-            if (reorder) {
-                for (int i = 0; i < _bounds.size(); ++i)
-                    _bounds.at(i) = bounds.at(_order.at(i)); 
+        inline void get(var_order_t& ordering) const {
+            ordering.resize(size() + 1);
+            forest->getVariableOrder(ordering.data()); 
+        }
+
+        inline void set(const var_order_t& ordering) {
+            forest->reorderVariables(ordering.data());
+            var_order = ordering; //update variable ordering 
+        }
+
+        inline void impose_variable_ordering() {
+            if (!var_order.empty()) {
+                forest->reorderVariables(var_order.data());
             }
-            init_meddly_domain(); 
-        }  
-
-        ~VariableOrdering() { MEDDLY::destroyDomain(_domain); }
-
-        ///////////////// GETTER 
-
-        // return the domain bounds vector 
-        inline const domain_bounds_t& bounds() const {  return _bounds; }
-
-        // return the variable ordering vector 
-        inline const var_order_t& var_order() const {  return _order;  }
-
-        // return the mtmdd domain built via meddly 
-        inline MEDDLY::domain* domain() {   return _domain;  } 
+        }
 
         // return the number of variables 
-        inline size_t size() const {    return _bounds.size(); }
+        inline size_t size() const {    return bounds.size(); }
 
         //copy a labelled path and its starting node in @dest following the variable ordering 
         inline void copy_variables(
-            const std::vector<node_label_t>& labelled_path, 
-            const int graph_node_id,
-            int* dest) const {
- 
-            for (int i = labelled_path.size() - 1; i >= 0; --i)
-                dest[_order[i]] = labelled_path.at(i);
-            
-            dest[_order.back()] = graph_node_id; 
-        }
+                const std::vector<node_label_t>& labelled_path, 
+                const int graph_node_id,
+                std::vector<int>& dest) const {
+
+            std::copy(labelled_path.begin(), labelled_path.end(), dest.begin() + 1); 
+            dest.back() = graph_node_id;
+        }  
 
         friend std::ostream& operator << (std::ostream& out, VariableOrdering& ordering) {
-            for (int i = 0; i < ordering._bounds.size(); ++i)
-                out << ordering._bounds.at(i) << " " << ordering._order.at(i) << "\n";
+            for (int i = 0; i < ordering.bounds.size(); ++i)
+                out << ordering.bounds.at(i) << " " << ordering.var_order.at(i+1) << "\n"; 
             
             return out; 
         }
 
         inline void read(std::ifstream& in) {
-            for (int i = 0; i < _bounds.size(); ++i) 
-                in >> _bounds.at(i) >> _order.at(i);
+            var_order.resize(bounds.size());
+
+            for (int i = 0; i < bounds.size(); ++i) 
+                in >> bounds.at(i) >> var_order.at(i);
+
+            var_order.insert(var_order.begin(), 0); 
         }
 
-        void show() {
+        void show() const {
             std::cout << "Bounds: "; 
-            for (auto x: _bounds)       std::cout << x << " ";
+            for (auto x: bounds)       std::cout << x << " ";
             std::cout << "\nOrder: ";
-            for (auto x: _order)        std::cout << x << " ";
+            for (auto x: var_order)    std::cout << x << " ";
             std::cout << std::endl;             
         }
     }; 
+
 
 
     /** GraphNodeEncoder maps graph nodes to a single numeric value */
