@@ -39,7 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define NOP_LABEL 0 
 
-
 class GraphsDB;
 
 
@@ -79,16 +78,18 @@ namespace mtmdd {
         GraphNodeEncoder graphNodeMapping; 
 
         bool direct_indexing = true; 
-        size_t num_graphs_in_db = 0; 
+   //     size_t num_graphs_in_db = 0; 
     public: 
         VariableOrdering *v_order = nullptr;
 
         MEDDLY::forest::policies policy; 
+
         MEDDLY::forest *forest = nullptr; 
         MEDDLY::dd_edge *root = nullptr; 
         
         inline size_t num_indexed_graphs() const {
-            return num_graphs_in_db; 
+            // return num_graphs_in_db; 
+            return graphNodeMapping.num_graphs();
         }
     private:
         void load_from_graph_db(const GraphsDB& graphs_db);
@@ -97,14 +98,27 @@ namespace mtmdd {
         //empty decision diagram with uninitialized domain (has to be defined before initialization)
         MultiterminalDecisionDiagram() : policy(false) {
             policy.setPessimistic(); 
+            // policy.setVarSwap();
+            // policy.setRandom();  //
+            // policy.setLowestCost();//uguale
         }
 
         /* build mtmdd from a network, by extracting all paths up to length = max_depth */ 
-        MultiterminalDecisionDiagram(const std::string& input_network_file, unsigned max_depth, bool direct, size_t buffersize); 
+        MultiterminalDecisionDiagram(const std::string& input_network_file, unsigned max_depth, bool direct, size_t buffersize) 
+        : MultiterminalDecisionDiagram() {
+            GraphsDB graphs_db(input_network_file, direct);
+            init(graphs_db, max_depth);
+        }
 
-        MultiterminalDecisionDiagram(const GraphsDB& graphs_db, unsigned max_depth, var_order_t& var_order);
+        MultiterminalDecisionDiagram(const GraphsDB& graphs_db, unsigned max_depth)
+        : MultiterminalDecisionDiagram() {
+            init(graphs_db, max_depth/*, var_order*/); 
+        }
 
-        MultiterminalDecisionDiagram(const domain_bounds_t& bounds); 
+        MultiterminalDecisionDiagram(const domain_bounds_t& bounds)
+        : MultiterminalDecisionDiagram() {
+            init(bounds); 
+        }
 
         ~MultiterminalDecisionDiagram() {
             delete root; 
@@ -114,16 +128,44 @@ namespace mtmdd {
 
 
         void init(const VariableOrdering& ordering) {
-            v_order = new VariableOrdering(ordering); 
-            forest = v_order->domain()->createForest(
-                false, MEDDLY::forest::INTEGER, MEDDLY::forest::MULTI_TERMINAL, policy
+            //init mtmdd with default variable ordering, then set the chosen ordering 
+            init(ordering.bounds); 
+            set_variable_ordering(ordering.var_order);
+        }  
+
+        void init(const domain_bounds_t& bounds)  {
+            //init domain 
+            v_order = new VariableOrdering(bounds); 
+            /* initialize a meddly forest having both internal and terminal nodes 
+             * of integer type*/
+            forest = v_order->domain->createForest(
+                false, 
+                MEDDLY::forest::INTEGER,           //internal nodes
+                MEDDLY::forest::MULTI_TERMINAL,    //terminal nodes 
+                policy
             );
             root = new MEDDLY::dd_edge(forest); 
+            v_order->set_forest(forest); 
         }
 
-        void init(const domain_bounds_t& bounds, const var_order_t& var_order = {});
+        void init(const GraphsDB& graphs_db, const unsigned max_depth) {
+            //init variables' domain
+            domain_bounds_t bounds(max_depth + 1, graphs_db.labelMap.size() + 1); 
+            bounds.back() = graphs_db.total_num_vertices + 1; 
+            //init mtmdd data structure
+            init(bounds); 
+            //load labelled paths into mtmdd
+            load_from_graph_db(graphs_db); 
+        }
 
-        void init(const GraphsDB& graphs_db, const unsigned max_depth, const var_order_t& var_order = {}); 
+        /** Variable ordering methods **/ 
+        inline void get_variable_ordering(var_order_t& var_order) {
+            v_order->get(var_order); 
+        }
+
+        inline void set_variable_ordering(const var_order_t& var_order) {
+            v_order->set(var_order); 
+        }
 
         //it returns the mtmdd's number of levels 
         inline size_t size() const {
@@ -139,7 +181,7 @@ namespace mtmdd {
                 tmp.clear(); 
             } catch (MEDDLY::error& e) {
                 std::cerr 
-                    << "Meddly throws an error: " 
+                    << "Data insertion into mtmdd failed with the following meddly error: " 
                     << e.getName() << " (code " << e.getCode() <<  ")" 
                     << " at line " << e.getLine() << std::endl; 
                 throw MEDDLY::error(e); 
@@ -159,7 +201,9 @@ namespace mtmdd {
             try {
                 root->writePicture(pdffile.c_str(), "pdf");
             } catch (MEDDLY::error& e) {
-                std::cerr << "Cannot create pdf file " << pdffile << ".pdf due to MEDDLY error -> " << e.getName() << std::endl; 
+                std::cerr 
+                    << "Cannot create pdf file " << pdffile 
+                    << ".pdf due to MEDDLY error ==> " << e.getName() << std::endl; 
             }
         }
 
@@ -215,26 +259,28 @@ namespace mtmdd {
 }
 
 namespace grapes2dd {
-
     inline std::string get_dd_index_name(const std::string& input_network_file, const size_t lp) {
         return input_network_file + "." + std::to_string(lp) + ".index.mtdd";
     }
 
     inline bool dd_already_indexed(const std::string& input_network_file, const size_t lp) {
-        return std::ifstream(get_dd_index_name(input_network_file, lp).c_str()).good(); 
+        return std::ifstream(get_dd_index_name(input_network_file, lp)).good(); 
     }
 
     inline size_t get_path_from_node(GRAPESLib::OCPTreeNode& n, std::vector<node_label_t>& vpath, const size_t max_pathlength = 0) {
         //retrieve labels from GRAPES node
         vpath.push_back(n.label + 1); 
 
-        for (GRAPESLib::OCPTreeNode* p = n.parent; p; p = p->parent) 
-            if (p->parent)
+        for (GRAPESLib::OCPTreeNode* p = n.parent; p; p = p->parent) {
+            if (p->parent) {
                 vpath.push_back(p->label + 1); 
+            }
+        }
         //fill vector with empty labels if maxlength is set, then return the current path length
         size_t pathlength = vpath.size(); 
-        while (vpath.size() < max_pathlength)
+        while (vpath.size() < max_pathlength) {
             vpath.insert(vpath.begin(), NOP_LABEL);  
+        }
 
         return pathlength; 
     }

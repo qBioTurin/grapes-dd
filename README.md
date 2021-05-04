@@ -1,13 +1,13 @@
 # GRAPES-DD
 > GRAPES-DD is a modified version of GRAPES (available at https://github.com/InfOmics/GRAPES ) in which the trie indexing structure has been replaced with a multi-terminal multiway decision diagram (MTMDD). 
 
-GRAPES-DD research paper is under review; it is available [here](https://www.researchgate.net/publication/343488915_GRAPES-DD_Exploiting_Decision_Diagrams_for_Index-Driven_Biomedical_Databases_Search?_ec=twitter&_ecd=eHNsLVpBbFNyN3RmMW1VdlZmNCtlWFN1akpjd0pHV2p0VWhwS0N2OFdXdE5kbjFOd0x4K1QyL3FSZm00dXY5aW1KS1RGelRmWkJBPQ%3D%3D ).
+GRAPES-DD research paper has been published on BMC Bioinformatics: it is available [here](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-021-04129-0).
 <hr/>
 
 ### Description 
 
 GRAPES-DD is developed in C++ under GNU\Linux using POSIX Threads programming.
-It requires the MEDDLY Library 0.15.0 available at https://github.com/asminer/meddly/releases
+It requires the MEDDLY Library 0.15.1 available at https://github.com/asminer/meddly/releases
 
 The GRAPES-DD workflow is composed by two main phases:
 1. the indexing building phase in which an MTMDD indexing the collection of target graphs is created;
@@ -41,9 +41,9 @@ Each target graph presents in the ```queries``` folder has a dedicated subfolder
 ### Usage
 
 GRAPES-DD is developed in C++ under GNU\Linux using POSIX Threads programming.
-It requires the MEDDLY Library 0.15.0 available at https://github.com/asminer/meddly/releases
+It requires the MEDDLY Library 0.15.1 available at https://github.com/asminer/meddly/releases
 
-The executable *grapes_dd* allows to both build the database index and to run a query. 
+The executable *grapes_dd* allows you to both build the database index and to run a query. 
 
 You can try and compare GRAPES-DD and GRAPES performances by using the runTest.py python script. 
 Tests will be run through Docker if it is installed.
@@ -70,15 +70,11 @@ We recommend you to run the software via Docker. See https://www.docker.com/
 
 ##### Build from source code 
 
-Executables are available only after building source code on your system.
+Executables are available only after building source code on your system. 
+Use the build_all.sh script to build the grapes_dd executable. 
 
 ```
-# Compile GRAPES 
-cd src/GRAPES && make -B 
-cd ..
-# Compile GRAPES-DD
-make clean
-make grapes_dd
+./build_all.sh 
 ```
 
 ##### Database Index Construction
@@ -117,7 +113,7 @@ The indexing phase  produces the *db_file.index.lp.mtdd* file in which the datab
 ### Use containerized GRAPES-DD 
 
 We built a Docker image containing both GRAPES-DD and GRAPES. 
-In the folder where the Dockerfile is, run the following command to build the image:
+In the folder where the Dockerfile is located, run the following command to build the image:
 
 ##### Build the docker image
 
