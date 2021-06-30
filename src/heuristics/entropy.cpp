@@ -196,6 +196,7 @@ int main(int argc, char** argv) {
 
         if (result["varorder"].count() > 0) {
             variables = result["varorder"].as<mtmdd::var_order_t>();
+            variables.insert(variables.begin(), 0); 
             //todo- check correctness 
             build_full_dd = true;
         } else {
@@ -211,8 +212,21 @@ int main(int argc, char** argv) {
 
     //load graphs from file 
     GraphsDB db(graph_file, direct_graph);  
+    mtmdd::MultiterminalDecisionDiagram dd;
 
     if (build_full_dd) {
+        // load data from textual file to mtmdd 
+        // set desired order - check with baseline 
+
+        std::cout << "Loading data from " << graph_file << std::endl; 
+        dd.load_data(graph_file); 
+        dd.set_variable_ordering(variables); 
+
+        mtmdd::StatsDD stats; 
+        dd.get_stats(stats); 
+        stats.show(); 
+
+        /*
         std::cout << "Building mtmdd from graphs db...\n" 
                   << "Using the following variable ordering: "; 
 
@@ -222,7 +236,7 @@ int main(int argc, char** argv) {
         mtmdd::StatsDD stats_default, stats_order;
 
         std::cout << "\nBuilding DD with default variable ordering..." << std::endl; 
-        size_t size_default = build_dd(dd_default, graph_file, db, max_depth, stats_default);
+        size_t size_default = build_dd(dd_default, graph_file, db, max_depth, stats_default); */
 
         // std::cout << "Building DD with custom variable ordering..." << std::endl; 
         // size_t size_custom = build_dd(dd_order, graph_file, db, max_depth, stats_order);  
@@ -239,18 +253,15 @@ int main(int argc, char** argv) {
 
 
         std::cout << "Trying to dinamically change variable ordering..." << std::endl;
-        dd_default.change_order(); 
+    //    dd_default.change_order(); 
         // std::cout << "Same stuff " << std::endl;
         // dd_order.change_order();
         
 
     } else {
-        heuristic(db, max_depth); 
-
-
+        // heuristic(db, max_depth); 
         /** Path extraction **/
-        // mtmdd::MultiterminalDecisionDiagram dd;
-        // path_extraction(dd, db, max_depth, dfs_per_label, output_file); 
+        path_extraction(dd, db, max_depth, dfs_per_label, output_file); 
     }
 
     return 0; 
@@ -267,14 +278,19 @@ void path_extraction(
     mtmdd::domain_bounds_t bounds(max_depth + 1, db.labelMap.size() + 1); 
     bounds.back() = MEDDLY::DONT_CARE; //unknown number of nodes 
     
-    mtmdd::VariableOrdering var_order(bounds); 
-    dd.init(var_order); 
+  //  mtmdd::VariableOrdering var_order(bounds); 
+    dd.init(bounds); 
 
     std::cout << "Extracting labelled paths from graphs...\n" << std::endl; 
     extract_labelled_paths(dd, db, max_depth, dfs_per_label); 
 
     std::cout << "Saving data in " << output_file << std::endl;
     dd.save_data(output_file); 
+
+    mtmdd::StatsDD stats; 
+    dd.get_stats(stats); 
+
+    stats.show(); 
 }
 
 
@@ -371,7 +387,8 @@ size_t build_dd(
         mtmdd::StatsDD& stats, 
         const mtmdd::var_order_t& variables) {
 
-    dd.init(db, max_depth, variables); 
+    dd.init(db, max_depth);
+    dd.set_variable_ordering(variables);  
     dd.write(db_filename); 
 
     std::string index_filename = grapes2dd::get_dd_index_name(db_filename, max_depth);

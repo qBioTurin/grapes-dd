@@ -1,6 +1,9 @@
 src/.vscode
 src/*.o
 src/*.gch
+src/heuristics/hpc_data
+src/heuristics/test
+src/bush
 src/grapes_dd 
 example/*/*
 !example/*/*.gfu

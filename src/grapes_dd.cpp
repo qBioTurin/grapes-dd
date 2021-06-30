@@ -114,6 +114,7 @@ int main(int argc, char** argv) {
 
         start_saving = std::chrono::_V2::steady_clock::now(); 
         mtmdd_index.write(graph_file); 
+        mtmdd_index.save_data("porcoilclero.txt");
         end_saving = std::chrono::_V2::steady_clock::now(); 
         time_saving = get_time_interval(end_saving, start_saving); 
 

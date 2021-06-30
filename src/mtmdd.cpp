@@ -372,7 +372,7 @@ void MultiterminalDecisionDiagram::load_data(const std::string& filename) {
     set_variable_ordering(order); 
 
 
-    Buffer buffer(50000, order.size(), true);
+    Buffer buffer(100000, order.size(), true);
     std::vector<int> *slot = nullptr; 
     
     //fill data into mtmdd 

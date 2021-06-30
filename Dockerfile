@@ -29,7 +29,7 @@ COPY src/ /opt/src/
 WORKDIR /opt/src 
 RUN make all && \
     make clean && \
-    cp grapes_dd orders /usr/bin
+    cp grapes_dd dd_one orderings /usr/bin
 
 # ENTRYPOINT [ "/opt/src/grapes_dd" ]
 

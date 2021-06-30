@@ -188,11 +188,6 @@ namespace mtmdd {
             }
         }
 
-
-        void change_order();
-
-        void impose_order(const var_order_t& var_order); 
-
         //search all the occurrences of the query subgraph in the indexed graphs 
         std::vector<GraphMatch> match(const std::string& query_graph_file, unsigned nthreads, std::vector<double>& times); 
 

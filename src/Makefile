@@ -7,19 +7,26 @@ LINKING=-L./GRAPES/vflib2/lib -lvf -lstdc++ -lm
 LINKING += meddly/lib/libmeddly.a -pthread
 
 WARNS=-Wall -Wextra
-DEBUG=-g -ggdb
-#OPTIMIZE=-O3 -funroll-loops
+# DEBUG=-g -ggdb 
+OPTIMIZE=-O3 -funroll-loops
 
 SETTINGS=$(OPTIMIZE) $(DEBUG)# $(WARNS)
 
 
-all: grapes_dd orders
+all: grapes_dd dd_one orderings
 
-orders: orders.o mtmdd.o matching.o
-	$(CC) -o orders $^ $(LINKING) $(SETTINGS)
+dd_one: dd_one.o mtmdd.o matching.o
+	$(CC) -o dd_one $^ $(LINKING) $(SETTINGS)
 
-orders.o: orders.cpp
-	$(CC) -c orders.cpp $(INCLUDES) $(SETTINGS)
+dd_one.o: dd_one.cpp
+	$(CC) -c dd_one.cpp $(INCLUDES) $(SETTINGS)
+
+orderings: orderings.o mtmdd.o matching.o
+	$(CC) -o orderings $^ $(LINKING) $(SETTINGS)
+
+orderings.o: orderings.cpp
+	$(CC) -c orderings.cpp $(INCLUDES) $(SETTINGS)
+
 
 
 entropy: entropy.o mtmdd.o matching.o
