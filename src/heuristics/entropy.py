@@ -122,11 +122,23 @@ class Heu:
             for variable in self.unbounded:
                 vars = self.order + [variable]
                 #create kmers combining variables belonging to the partial order and current variable
-                df = self.df[vars].apply(lambda seq: tuple(seq), axis=1)
-                #count occurrences and estimate entropy for current set of objects 
-                kmers, n_occ = np.unique(df, return_counts=True)
+              #  df = self.df[vars].apply(lambda seq: tuple(seq), axis=1)
 
-                hh = entropy(n_occ, base=2)
+                counts = self.df[vars].apply(lambda seq: tuple(seq), axis=1).value_counts() 
+                
+
+
+#                counts = df.value_counts()
+                # print(f"Counts {type(counts)}:\n{len(counts)}\n")
+                
+                #count occurrences and estimate entropy for current set of objects 
+            #    kmers, n_occ = np.unique(df, return_counts=True)
+
+               # print(f"Unique: {len(n_occ)} vs {len(counts)}")
+
+#                print(f"Unique: \n{len(list(kmers,n_occ)))}")
+
+                hh = entropy(counts, base=2)
                 if hh < best_h:
                     best_h, best_v = hh, variable
 
