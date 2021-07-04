@@ -63,6 +63,21 @@ public:
     inline Buffer(size_t buffersize, size_t elem_size, bool set_values);
 
     inline void flush();
+    void flush(MEDDLY::dd_edge& edge, std::vector<long>* terminals = nullptr)  {
+        try {
+            MEDDLY::forest *forest = edge.getForest(); 
+            MEDDLY::dd_edge tmp(forest); 
+            long* t = terminals ? terminals->data() : values_data(); 
+            forest->createEdge(data(), t, num_elements(), tmp);
+
+            MEDDLY::apply(MEDDLY::PLUS, edge, tmp, edge);
+            tmp.clear();
+            flush();
+        } catch (MEDDLY::error& e) {
+            std::cout << "Meddly error while flushing data in dd edge: " << e.getName() << std::endl; 
+            throw MEDDLY::error(e); 
+        }
+    }
 
     /** Return a pair containing a pointer to the next element available of the buffer.
      * and a flag setted to true if there are other elements avaiable, false otherwise. */
@@ -124,6 +139,7 @@ inline void Buffer::flush() {
         current_value = values.begin(); 
 }
 
+
 inline bool Buffer::get_slot(int_vector*& slot) {
     slot = std::addressof(*current);
     ++num_current_elements; 
@@ -162,7 +178,9 @@ inline void Buffer::show_content() const {
 
         for (int val: at(i))
             std::cout << val << " ";
-        std::cout << "  ==> " << values.at(i) << "\n"; 
+        if (enable_values)
+            std::cout << "  ==> " << values.at(i); 
+        std::cout << "\n"; 
     }
     std::cout << std::endl; 
 }

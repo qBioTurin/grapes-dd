@@ -78,7 +78,6 @@ namespace mtmdd {
         GraphNodeEncoder graphNodeMapping; 
 
         bool direct_indexing = true; 
-   //     size_t num_graphs_in_db = 0; 
     public: 
         VariableOrdering *v_order = nullptr;
 
@@ -88,7 +87,6 @@ namespace mtmdd {
         MEDDLY::dd_edge *root = nullptr; 
         
         inline size_t num_indexed_graphs() const {
-            // return num_graphs_in_db; 
             return graphNodeMapping.num_graphs();
         }
     private:
@@ -96,11 +94,9 @@ namespace mtmdd {
 
     public: 
         //empty decision diagram with uninitialized domain (has to be defined before initialization)
-        MultiterminalDecisionDiagram() : policy(false) {
+        MultiterminalDecisionDiagram(bool dense_nodes = true) : policy(false) {
             policy.setPessimistic(); 
-            // policy.setVarSwap();
-            // policy.setRandom();  //
-            // policy.setLowestCost();//uguale
+            dense_nodes ? policy.setFullStorage() : policy.setSparseStorage();
         }
 
         /* build mtmdd from a network, by extracting all paths up to length = max_depth */ 
