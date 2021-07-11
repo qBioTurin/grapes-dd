@@ -64,6 +64,9 @@ public:
 
     inline void flush();
     void flush(MEDDLY::dd_edge& edge, std::vector<long>* terminals = nullptr)  {
+        if (num_elements() == 0)    
+            return; 
+
         try {
             MEDDLY::forest *forest = edge.getForest(); 
             MEDDLY::dd_edge tmp(forest); 
