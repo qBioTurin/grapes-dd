@@ -4,8 +4,10 @@
 #include <tuple>
 
 
-
-//heuristic 
+/** Initialize a MEDDLY forest for MTMDDs with N variables, 
+ * where N is the number of variables already in the partial ordering. 
+ * If use_terminals is set to true, the forest will have N+1 variables. 
+ * The number of variables is returned.  */ 
 int heuristic::init_forest(bool use_terminals) { 
     //considering variables in the order, the current variable and, optionally, terminal values.
     int num_dd_vars = partial_ordering.size() + 1 + (int) use_terminals;
@@ -22,6 +24,7 @@ int heuristic::init_forest(bool use_terminals) {
     return num_dd_vars; 
 }
 
+/** Destroy the current MEDDLY forest */ 
 void heuristic::clear_forest() {
     edges.clear(); 
     MEDDLY::destroyForest(forest); 
@@ -29,6 +32,12 @@ void heuristic::clear_forest() {
     delete buffer; 
 }
 
+
+/** Build a MTMDD from the index MTMDD by considering only those variables in the partial ordering, 
+ * plus the current var. Terminal values can be calculated summing either 
+ * (i) one for each feature or (ii) the terminal values of the index MTMDD.
+ * 
+ * The edge representing the current MTMDD is returned. */
 MEDDLY::dd_edge& heuristic::build_mtmdd(int var, bool terminal_as_counts) {
     //vars are those of partial ordering, the current variable var and the (optional) terminal values
     // int curr_numvars = partial_ordering.size() + 1 + (int) use_terminals; 
@@ -40,17 +49,19 @@ MEDDLY::dd_edge& heuristic::build_mtmdd(int var, bool terminal_as_counts) {
 
     buffer->flush();            //empty buffer 
     edges.emplace_back(forest); //create dd edge for current ordering 
-    load_dd_data(current_ordering); //, use_terminals); //load data into dd edge 
+    load_dd_data(current_ordering); //load data into dd edge 
     
     //flush remaining data into dd edge 
     std::vector<long>* t = terminal_as_counts 
-        ? nullptr       //if you use terminal as counts, proper values are in the buffer
+        ? nullptr       //if you use terminal as counts, proper values will be in the buffer
         : &terminals;   //otherwise, if you simply count k-mer occurrences, explicitly pass a vector filled with ones. 
     buffer->flush(edges.back(), t); 
     return edges.back(); 
 }
 
 
+/** Transfer data from the index MTMDD to the current edge by considering 
+ * only the variables in the order passed as parameter  */
 void heuristic::load_dd_data(const mtmdd::var_order_t& order) {
     Buffer& buffer = *this->buffer;
     std::vector<int> *slot = nullptr;
@@ -73,7 +84,8 @@ void heuristic::load_dd_data(const mtmdd::var_order_t& order) {
     }
 }
 
-
+/** 
+ * */
 const mtmdd::var_order_t& heuristic::get() {
     do {
         int num_dd_vars = init_forest(false); //to parametrize 
@@ -131,7 +143,7 @@ order_metric correlation_heuristic::compute_metric(const MEDDLY::dd_edge& edge) 
     encoder<std::string> enc_v1;
     encoder<int> enc_v2; 
 
-    std::cout << "num variables: " << num_vars << std::endl; 
+    // std::cout << "num variables: " << num_vars << std::endl; 
 
     std::vector<my_triple> sparse_matrix; 
     long dim; 

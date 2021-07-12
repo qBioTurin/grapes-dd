@@ -54,7 +54,7 @@ public:
 };
 
 
-template<class T>
+template<class T> 
 class encoder {
     using keymap_t = T; 
     using valuemap_t = unsigned; 

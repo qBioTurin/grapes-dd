@@ -16,13 +16,14 @@ SETTINGS=$(OPTIMIZE) $(DEBUG)# $(WARNS)
 all: grapes_dd dd_one orderings heu
 
 
-
-heu: heuristics.o mtmdd.o matching.o
+heu: heu.o heuristics.o mtmdd.o matching.o
 	$(CC) -o heu $^ $(LINKING) $(SETTINGS)
 
 heuristics.o: heuristics.cpp 
 	$(CC) -c heuristics.cpp $(INCLUDES) $(SETTINGS)
 
+heu.o: heu.cpp
+	$(CC) -c heu.cpp $(INCLUDES) $(SETTINGS)
 
 
 dd_one: dd_one.o mtmdd.o matching.o
