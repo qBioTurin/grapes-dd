@@ -28,16 +28,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "mtmdd.hpp"
 
-#include "Graph.h"
-#include "LabelMap.h"
-#include "GraphReaders.h"
-#include "sbitset.h"
-#include "OCPTreeNode.h"
-#include "OCPTree.h"
-#include "BuildManager.h"
-#include "GraphPathListener.h"
-#include "GraphVisit.h"
-#include "BuildRunner.h"
+#include "Graph.h"  //Y
+#include "LabelMap.h" //N
+#include "GraphReaders.h" //Y
+#include "sbitset.h" //mi sa N
+#include "OCPTreeNode.h" //N
+#include "OCPTree.h" //N
+#include "BuildManager.h" //?
+#include "GraphPathListener.h" //Y
+#include "GraphVisit.h" //Y
+#include "BuildRunner.h" //?
 
 #include <algorithm>
 #include <random>
@@ -170,6 +170,8 @@ void MultiterminalDecisionDiagram::read(const std::string& in_ddfile, const size
 }
 
 void MultiterminalDecisionDiagram::get_stats(StatsDD& stats) const {
+    get_variable_ordering(stats.ordering);
+    
     stats.num_nodes = forest->getCurrentNumNodes(); 
     stats.peak_nodes = forest->getPeakNumNodes(); 
     stats.memory_used = forest->getCurrentMemoryUsed();

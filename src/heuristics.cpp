@@ -3,6 +3,13 @@
 #include <algorithm>
 #include <tuple>
 
+#include <set>
+
+
+cache_dd heuristic::cache_ordering; //static 
+
+
+
 
 /** Initialize a MEDDLY forest for MTMDDs with N variables, 
  * where N is the number of variables already in the partial ordering. 
@@ -15,7 +22,10 @@ int heuristic::init_forest(bool use_terminals) {
     MEDDLY::forest::policies policy = MEDDLY::forest::policies(false); 
     policy.setSparseStorage(); 
     domain = MEDDLY::createDomainBottomUp(bounds.data(), bounds.size());
-    forest = domain->createForest(false, MEDDLY::forest::INTEGER, MEDDLY::forest::MULTI_TERMINAL, policy);
+
+    forest = domain->createForest(false, MEDDLY::forest::REAL, MEDDLY::forest::MULTI_TERMINAL, policy);
+    // forest = domain->createForest(false, MEDDLY::forest::INTEGER, MEDDLY::forest::MULTI_TERMINAL, policy);
+
     buffer = new Buffer(bufferlength, num_dd_vars + 1, true); 
 
     // std::cout << "partial ordering size: " << partial_ordering.size() << std::endl;
@@ -44,8 +54,10 @@ MEDDLY::dd_edge& heuristic::build_mtmdd(int var, bool terminal_as_counts) {
     std::vector<int> current_ordering(partial_ordering); 
     current_ordering.push_back(var); 
 
-    // std::cout << "Current ordering: \n";
-    // for (auto x: current_ordering)std::cout << x << " ";std::cout << "\n"; 
+#if DEBUG
+    std::cout << "Current ordering: \n";
+    for (auto x: current_ordering)std::cout << x << " ";std::cout << "\n"; 
+#endif
 
     buffer->flush();            //empty buffer 
     edges.emplace_back(forest); //create dd edge for current ordering 
@@ -84,30 +96,72 @@ void heuristic::load_dd_data(const mtmdd::var_order_t& order) {
     }
 }
 
-/** 
+void heuristic::metric_plot(std::map<combinations::combination, float>& metrics) {
+    // cache_metric cache; 
+    combinations ccc(unbounded_vars); 
+    metrics.clear(); 
+
+    // std::map<combinations::combination, float> metrics; 
+
+    for (int len_ordering = 1; len_ordering < unbounded_vars.size(); ++len_ordering) {
+        const std::set<combinations::combination>& cset = ccc.get(len_ordering); 
+        int num_vars = init_forest(false);
+
+        std::cout << "curr num vars: " << num_vars << "\n"; 
+
+        for (const combinations::combination& c: cset) {
+            partial_ordering.assign(c.begin(), c.end());
+            int last_var = partial_ordering.back(); 
+            partial_ordering.pop_back(); 
+            order_metric m(get_metric(last_var));
+             
+            // partial_ordering.push_back(last_var); 
+
+            metrics.emplace(
+                std::piecewise_construct, 
+                std::forward_as_tuple(c), 
+                std::forward_as_tuple(m.get_hval()));
+            std::cout << "curr partial ordering: ";
+            for (const auto& x: partial_ordering)   std::cout << x << " ";
+            std::cout << " -- metric: " << m.get_hval() << "\n"; 
+            std::cout << "\n"; 
+        }
+        partial_ordering.push_back(0); 
+
+        clear_forest(); 
+    }
+}
+
+/** Calculate heuristic based on a metric
  * */
 const mtmdd::var_order_t& heuristic::get() {
-    do {
-        int num_dd_vars = init_forest(false); //to parametrize 
-        order_metric best, current; 
-        mtmdd::var_order_t::iterator best_var;
+    if (unbounded_vars.size() > 0) {
+        do {
+            int num_dd_vars = init_forest(false); //to parametrize 
+            order_metric best, current; 
+            mtmdd::var_order_t::iterator best_var;
 
-        for (mtmdd::var_order_t::iterator it = unbounded_vars.begin(); it != unbounded_vars.end(); ++it) {
-            order_metric current(get_metric(*it)); 
+            for (mtmdd::var_order_t::iterator it = unbounded_vars.begin(); it != unbounded_vars.end(); ++it) {
+                order_metric current(get_metric(*it)); 
 
-            if (!best || current.is_better_than(best)) {
-                best_var = it; 
-                best = current; 
+                // std::cout << current.get_hval() << std::endl;
+
+                if (!best || current.is_better_than(best)) {
+                    best_var = it; 
+                    best = current; 
+                }
             }
-        }
 
-        partial_ordering.push_back(*best_var); 
-        unbounded_vars.erase(best_var); 
-        clear_forest(); 
+            partial_ordering.push_back(*best_var); 
+            unbounded_vars.erase(best_var); 
+            clear_forest(); 
 
-    } while (unbounded_vars.size() > 1);
+        } while (unbounded_vars.size() > 1);
 
-    partial_ordering.push_back(unbounded_vars.front());
+        partial_ordering.push_back(unbounded_vars.front());
+        unbounded_vars.pop_back(); 
+    }
+
     return partial_ordering;
 }
 
@@ -137,13 +191,12 @@ order_metric entropy_heuristic::compute_metric(const MEDDLY::dd_edge& edge)  {
 
 //correlation metric 
 order_metric correlation_heuristic::compute_metric(const MEDDLY::dd_edge& edge) {
-    using my_triple = std::tuple<unsigned, unsigned, long>; 
+    using my_triple = std::tuple<unsigned, unsigned, uint64_t>; 
 
     int num_vars = edge.getForest()->getDomain()->getNumVariables();
     encoder<std::string> enc_v1;
     encoder<int> enc_v2; 
 
-    // std::cout << "num variables: " << num_vars << std::endl; 
 
     std::vector<my_triple> sparse_matrix; 
     long dim; 
@@ -153,29 +206,33 @@ order_metric correlation_heuristic::compute_metric(const MEDDLY::dd_edge& edge) 
     for (MEDDLY::enumerator e(edge); e; ++e) {
         const int *p = e.getAssignments(); 
         std::stringstream ss;
-        int term = 0; 
+        float term;  
 
-        for (int i = 1; i < num_vars; ++i)  ss << p[i] << ","; //concatenate multiple variables 
-
-        // std::cout << "encoded: " << ss.str() << "\n";
+        for (int i = 1; i < num_vars; ++i)  
+            ss << p[i] << ","; //concatenate multiple variables 
 
         e.getValue(term); 
+
         sparse_matrix.emplace_back(
             enc_v1.get(ss.str()), 
             enc_v2.get(p[num_vars]), 
-            term);
+            static_cast<uint64_t>(term));
     }
 
     //init empty |v1| x |v2| matrix 
     contingency_table contingency(enc_v1.size(), enc_v2.size()); 
 
     for (const my_triple& t: sparse_matrix) {
-        unsigned i, j; long count; 
+        unsigned i, j; uint64_t count; 
+
         std::tie(i, j, count) = t;
-        contingency.add(i, j, count);
+
+        // std::cout << " setting " << i << ", " << j << " to " << count << std::endl; 
+
+        contingency.add(i, j, count); 
     }
 
-    // contingency.show();
+
 
     return order_metric(current_var, contingency.cramerV());        
 }
@@ -186,7 +243,7 @@ void correlation_heuristic::init_ordering() {
     using it_pair = std::pair<mtmdd::var_order_t::iterator, mtmdd::var_order_t::iterator>; 
 
     it_pair best_vars; 
-    double h = 0; 
+    double h = 0;
 
     //test all possible pair of variables in order to find the most correlated pair  
     partial_ordering.push_back(0);

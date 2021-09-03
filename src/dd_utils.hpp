@@ -58,6 +58,15 @@ inline double get_time_interval(time_point end_t, time_point start_t) {
 }
 
 
+template<typename T> 
+std::string show_vec(std::vector<T> v) {
+    std::stringstream ss;
+    ss << v[0];
+    for (auto it = v.begin() + 1; it != v.end(); ++it)   
+        ss << "," << *it;
+    return ss.str();
+}
+
 
 class Parser {
     const size_t buffersize = 256; 
@@ -134,6 +143,19 @@ namespace mtmdd {
 
     //vector of single query results 
     using query_result_t = std::vector<single_result_t>; 
+
+
+    inline void visit_edge(MEDDLY::dd_edge& edge) {
+        size_t nlevels = edge.getForest()->getDomain()->getNumVariables(); 
+        int value; 
+        for (MEDDLY::enumerator e(edge); e; ++e) {
+            const int *p = e.getAssignments(); 
+            e.getValue(value); 
+            for (int i = 1; i <= nlevels; ++i)
+                std::cout << p[i] << " "; 
+            std::cout << " ==> " << value << std::endl; 
+        }
+    }
 
 
     class VariableOrdering {
@@ -475,6 +497,7 @@ namespace mtmdd {
 
 
     struct StatsDD {
+        mtmdd::var_order_t ordering; 
         long num_vars = 0; //number of mtdd levels
         long num_graphs = 0;  //number of indexed graphs
         long num_labels = 0;  //number of labels
@@ -486,16 +509,22 @@ namespace mtmdd {
         long num_unique_nodes = 0; //current number of unique nodes 
         long cardinality = 0; //number of stored elements 
 
-        void show() {
+        void show() const {
+            std::stringstream ss; 
+            ss << ordering.at(0); 
+            for (auto it = ordering.begin() + 1; it != ordering.end(); ++it) ss << "," << *it;
+
+
             std::cout << "##################\n"
+                << "ordering = " << ss.str() << "\n"
                 << "num_vars = " << num_vars << "\n"
-                << "num_graphs = " << num_graphs << "\n"
-                << "num_labels = " << num_labels << "\n"
-                << "num_nodes = " << num_nodes << "  , peak = " << peak_nodes << "\n"
-                << "num unique nodes = " << num_unique_nodes << "\n"
-                << "num_edges = " << num_edges << "\n"
+                << "num_graphs = " << num_graphs << ", num_labels = " << num_labels << "\n"
+                << "num_dd_edges = " << num_edges << "\n"
+                << "num_dd_nodes = " << num_nodes << "  , peak = " << peak_nodes << "\n"
+                // << "num unique nodes = " << num_unique_nodes << "\n"
+                
                 << "memory_used = " << memory_used << "  , peak = " << peak_memory << "\n"
-                << "cardinality = " << cardinality << std::endl; 
+                << "dd_cardinality = " << cardinality << std::endl; 
         }
     }; 
 }

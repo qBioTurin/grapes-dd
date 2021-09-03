@@ -37,7 +37,7 @@ using int_vector = std::vector<int>;
 /** Buffer for the data of a single graph. */
 class Buffer : private std::vector<int_vector> { 
     using base = std::vector<int_vector>; 
-    using value_vector = std::vector<long>;
+    using value_vector = std::vector<long>; //template? 
 
     //iterator to the current buffer 
     Buffer::iterator current; 
@@ -67,11 +67,52 @@ public:
         if (num_elements() == 0)    
             return; 
 
+        MEDDLY::forest *forest = edge.getForest(); 
+        MEDDLY::dd_edge tmp(forest); 
+
+        long *tvalues = terminals ? terminals->data() : values_data(); 
+        std::vector<float> floatvalues(tvalues, tvalues + num_elements());  //inefficiente a scoppio
+
+
+
+        // for (int i = 0; i < num_elements(); ++i)
+        //     floatvalues.push_back(tvalues[i]);
+
+
+
+        // std::cout << "try to build new edge...." << std::endl; 
+
+        try {
+            // forest->createEdge(data(), tvalues, num_elements(), tmp);
+            forest->createEdge(data(), floatvalues.data(), num_elements(), tmp);
+            // std::cout << "new edge:" << std::endl; 
+            // mtmdd::visit_edge(tmp); 
+
+            // std::cout << "current dd:" << std::endl; 
+            // mtmdd::visit_edge(edge);    
+
+            // std::cout << "applying apply application" << std::endl; 
+            MEDDLY::apply(MEDDLY::PLUS, edge, tmp, edge); 
+            tmp.clear(); 
+            flush(); 
+        } catch (MEDDLY::error& e) {
+            std::cout << "esploso alla prima occasione...." << std::endl; 
+            std::cout << e.getName() << std::endl; 
+            throw MEDDLY::error(e); 
+        }
+
+
+/*
         try {
             MEDDLY::forest *forest = edge.getForest(); 
             MEDDLY::dd_edge tmp(forest); 
+
+    
+
             long* t = terminals ? terminals->data() : values_data(); 
             forest->createEdge(data(), t, num_elements(), tmp);
+
+            mtmdd::visit_edge(tmp); 
 
             MEDDLY::apply(MEDDLY::PLUS, edge, tmp, edge);
             tmp.clear();
@@ -79,7 +120,7 @@ public:
         } catch (MEDDLY::error& e) {
             std::cout << "Meddly error while flushing data in dd edge: " << e.getName() << std::endl; 
             throw MEDDLY::error(e); 
-        }
+        }  */ 
     }
 
     /** Return a pair containing a pointer to the next element available of the buffer.

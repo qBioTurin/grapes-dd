@@ -59,19 +59,6 @@ namespace mtmdd {
     class QueryListener; 
 
 
-
-    inline void visit_edge(MEDDLY::dd_edge& edge) {
-        size_t nlevels = edge.getForest()->getDomain()->getNumVariables(); 
-        int value; 
-        for (MEDDLY::enumerator e(edge); e; ++e) {
-            const int *p = e.getAssignments(); 
-            e.getValue(value); 
-            for (int i = 1; i <= nlevels; ++i)
-                std::cout << p[i] << " "; 
-            std::cout << " ==> " << value << std::endl; 
-        }
-    }
-
     class MultiterminalDecisionDiagram {
     public:
         Encoder labelMapping; 
@@ -155,7 +142,7 @@ namespace mtmdd {
         }
 
         /** Variable ordering methods **/ 
-        inline void get_variable_ordering(var_order_t& var_order) {
+        inline void get_variable_ordering(var_order_t& var_order) const {
             v_order->get(var_order); 
         }
 

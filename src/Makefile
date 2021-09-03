@@ -1,10 +1,11 @@
 CC=g++
 NAME=grapes_dd
+LIB=./lib/
 
-INCLUDES=-I./GRAPES/vflib2/include -I./GRAPES/RILib -I./GRAPES/GRAPESLib -I./GRAPES/GRAPESLib/data -I./GRAPES/GRAPESLib/pp
-INCLUDES += -I./meddly/include
-LINKING=-L./GRAPES/vflib2/lib -lvf -lstdc++ -lm 
-LINKING += meddly/lib/libmeddly.a -pthread
+INCLUDES=-I$(LIB)GRAPES/vflib2/include -I$(LIB)GRAPES/RILib -I$(LIB)GRAPES/GRAPESLib -I$(LIB)GRAPES/GRAPESLib/data -I$(LIB)GRAPES/GRAPESLib/pp
+INCLUDES += -I$(LIB)meddly/include
+LINKING=-L$(LIB)GRAPES/vflib2/lib -lvf -lstdc++ -lm 
+LINKING += lib/meddly/lib/libmeddly.a -pthread
 
 WARNS=-Wall -Wextra
 # DEBUG=-g -ggdb 
@@ -13,8 +14,13 @@ OPTIMIZE=-O3 -funroll-loops
 SETTINGS=$(OPTIMIZE) $(DEBUG)# $(WARNS)
 
 
-all: grapes_dd dd_one orderings heu
+all: grapes_dd dd_one orderings heu metrics
 
+metrics: metrics.o heuristics.o mtmdd.o matching.o 
+	$(CC) -o metrics $^ $(LINKING) $(SETTINGS)
+
+metrics.o: metrics.cpp	
+	$(CC) -c metrics.cpp $(INCLUDES) $(SETTINGS)
 
 heu: heu.o heuristics.o mtmdd.o matching.o
 	$(CC) -o heu $^ $(LINKING) $(SETTINGS)
